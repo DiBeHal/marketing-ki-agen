@@ -39,7 +39,7 @@ def get_context_from_text_or_url(text: str, url: str):
     return context
 
 def run_agent(mode: str, **kwargs):
-    if mode == "briefing_overview":
+    if mode in ["briefing_overview", "briefing_analysis"]:
         context = get_context_from_text_or_url(kwargs.get("text", ""), kwargs.get("url", ""))
         prompt = content_briefing_prompt.format(context=context)
         return llm.invoke(prompt).content
@@ -58,43 +58,33 @@ def run_agent(mode: str, **kwargs):
         return llm.invoke(prompt).content
 
     elif mode == "vergleich":
-        context_kunde = kwargs.get("text_kunde")
-        context_mitbewerber = kwargs.get("text_mitbewerber")
-        if not context_kunde or not context_mitbewerber:
-            raise ValueError("Beide Texte (Kunde & Mitbewerber) werden benötigt")
-        prompt = competitive_analysis_prompt.format(
-            context_kunde=context_kunde,
-            context_mitbewerber=context_mitbewerber
-        )
-        return llm.invoke(prompt).content
-
-    elif mode == "vergleich_urls":
-        url_kunde = kwargs.get("url_kunde")
-        urls_mitbewerber = kwargs.get("urls_mitbewerber")
-        if not url_kunde or not urls_mitbewerber:
-            raise ValueError("Kunden-URL und Wettbewerber-URLs werden benötigt")
-
-        context_kunde = load_html(url_kunde)
-        mitbewerber_liste = urls_mitbewerber.splitlines()
-        ergebnisse = []
-
-        for url in mitbewerber_liste:
-            if not url.strip():
-                continue
-            try:
-                context_mitbewerber = load_html(url.strip())
-                for link in search_google(url.strip()):
-                    context_mitbewerber += "\n" + load_html(link)
-                prompt = competitive_analysis_prompt.format(
-                    context_kunde=context_kunde,
-                    context_mitbewerber=context_mitbewerber
-                )
-                result = llm.invoke(prompt).content
-                ergebnisse.append(f"🔗 {url}\n{result}")
-            except Exception as e:
-                ergebnisse.append(f"❌ Fehler bei {url}: {str(e)}")
-
-        return "\n\n---\n\n".join(ergebnisse)
+        if kwargs.get("eigene_url") and kwargs.get("wettbewerber_urls"):
+            context_kunde = load_html(kwargs["eigene_url"])
+            ergebnisse = []
+            for url in kwargs["wettbewerber_urls"]:
+                try:
+                    context_mitbewerber = load_html(url.strip())
+                    for link in search_google(url.strip()):
+                        context_mitbewerber += "\n" + load_html(link)
+                    prompt = competitive_analysis_prompt.format(
+                        context_kunde=context_kunde,
+                        context_mitbewerber=context_mitbewerber
+                    )
+                    result = llm.invoke(prompt).content
+                    ergebnisse.append(f"🔗 {url}\n{result}")
+                except Exception as e:
+                    ergebnisse.append(f"❌ Fehler bei {url}: {str(e)}")
+            return "\n\n---\n\n".join(ergebnisse)
+        else:
+            context_kunde = kwargs.get("text_kunde")
+            context_mitbewerber = kwargs.get("text_mitbewerber")
+            if not context_kunde or not context_mitbewerber:
+                raise ValueError("Beide Texte (Kunde & Mitbewerber) werden benötigt")
+            prompt = competitive_analysis_prompt.format(
+                context_kunde=context_kunde,
+                context_mitbewerber=context_mitbewerber
+            )
+            return llm.invoke(prompt).content
 
     elif mode == "seo_audit":
         url = kwargs.get("url")
