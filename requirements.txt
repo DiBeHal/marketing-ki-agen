@@ -1,0 +1,63 @@
+# ----------------------------------------
+# 🧠 Core & FastAPI
+# ----------------------------------------
+fastapi
+uvicorn
+pydantic
+python-dotenv
+loguru
+python-multipart
+
+# ----------------------------------------
+# 🔍 Scraping & HTML-Handling
+# ----------------------------------------
+requests
+beautifulsoup4
+playwright  # für Browserless in scrape_competitors.py
+
+# ----------------------------------------
+# 📄 Datei-Handling
+# ----------------------------------------
+PyMuPDF  # PDF
+python-docx==0.8.11  # DOCX
+lxml  # Dependency für python-docx
+bs4
+readability
+readability-lxml
+
+# ----------------------------------------
+# 📊 Pipelines & Daten
+# ----------------------------------------
+pandas
+
+# ----------------------------------------
+# 🤖 LLM & Vektorstore
+# ----------------------------------------
+openai
+langchain==0.1.17
+langchain_openai==0.1.7
+langsmith
+qdrant-client
+
+# ----------------------------------------
+# 📅 Scheduler
+# ----------------------------------------
+apscheduler
+
+# ----------------------------------------
+# 🧪 Testing
+# ----------------------------------------
+pytest
+httpx
+
+# ----------------------------------------
+# 🧳 Datenbank / Speicher
+# ----------------------------------------
+sqlalchemy  # SQLite
+boto3  # AWS S3
+
+# ----------------------------------------
+# 🌐 Frontend (optional)
+# ----------------------------------------
+streamlit
+
