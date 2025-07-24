@@ -89,7 +89,10 @@ if st.button("✅ Absenden"):
         if briefing_typ == "Analyse":
             st.write(run_agent(mode="briefing_analysis", text=context, url=url, pdf_path=optional_pdf_path))
         else:
-            st.write(run_agent(mode="briefing_write", zielgruppe=zielgruppe, tonalitaet=tonalitaet, thema=thema))
+            if zielgruppe and tonalitaet and thema:
+                st.write(run_agent(mode="briefing_write", zielgruppe=zielgruppe, tonalitaet=tonalitaet, thema=thema))
+            else:
+                st.error("❗ Bitte Zielgruppe, Tonalität und Thema angeben.")
 
     elif task == "Content-Vergleich":
         if kunde and mitbewerber:

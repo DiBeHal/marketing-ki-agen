@@ -92,8 +92,11 @@ def run_agent(mode: str, **kwargs):
         context = get_context_from_text_or_url(text, url)
 
         signals = extract_seo_signals(url)
-        lighthouse = run_lighthouse(url) if url else {}
-        lighthouse_score = lighthouse.get("categories", {}).get("seo", {})
+        try:
+            lighthouse = run_lighthouse(url) if url else {}
+            lighthouse_score = lighthouse.get("categories", {}).get("seo", {})
+        except EnvironmentError as e:
+            lighthouse_score = {"warnung": str(e)}
 
         combined_context = f"TEXT-INHALT:\n{context}\n\nTECHNIK:\n{json.dumps(signals, indent=2)}\n\nLIGHTHOUSE:\n{json.dumps(lighthouse_score, indent=2)}"
         prompt = seo_audit_prompt.format(context=combined_context)
@@ -151,8 +154,11 @@ Kontext:
         url = kwargs.get("url")
         if not url:
             raise ValueError("URL für Lighthouse-Analyse fehlt.")
-        report = run_lighthouse(url)
-        seo_data = json.dumps(report["categories"]["seo"], indent=2)
+        try:
+            report = run_lighthouse(url)
+            seo_data = json.dumps(report["categories"]["seo"], indent=2)
+        except EnvironmentError as e:
+            seo_data = json.dumps({"warnung": str(e)}, indent=2)
         prompt = seo_lighthouse_prompt.format(context=seo_data)
         return llm.invoke(prompt).content
 

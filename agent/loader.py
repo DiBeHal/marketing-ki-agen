@@ -16,14 +16,18 @@ def load_pdf(path):
 
 def load_html(path_or_url):
     headers = {"User-Agent": "Mozilla/5.0"}
-    if path_or_url.startswith("http"):
+    
+    # Domain ergänzen, wenn kein Schema angegeben ist
+    if not path_or_url.startswith("http"):
+        path_or_url = "https://" + path_or_url
+
+    try:
         response = requests.get(path_or_url, headers=headers, timeout=10)
         response.raise_for_status()
         doc = Document(response.text)
         readable_html = doc.summary()
-    else:
-        with open(path_or_url, "r", encoding="utf-8") as f:
-            readable_html = f.read()
+    except Exception as e:
+        raise ValueError(f"Fehler beim Abrufen der URL {path_or_url}: {e}")
 
     soup = BeautifulSoup(readable_html, "html.parser")
     texts = []
@@ -32,7 +36,6 @@ def load_html(path_or_url):
         if txt and len(txt) > 30:
             texts.append(txt)
     return "\n".join(texts)
-
 
 def extract_seo_signals(url: str) -> dict:
     try:
