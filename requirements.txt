@@ -36,6 +36,7 @@ pandas
 openai
 langchain==0.1.17
 langchain_openai==0.1.7
+langchain-openai
 langsmith
 qdrant-client
 

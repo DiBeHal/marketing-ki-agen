@@ -1,156 +1,166 @@
+# agent/base_agent.py
+
+import os
+import uuid
+import json
+from typing import Any, Dict, Optional
+
 from langchain_openai import ChatOpenAI
+
 from agent.prompts import (
-    content_briefing_prompt,
-    content_write_prompt,
-    competitive_analysis_prompt,
-    seo_audit_prompt,
-    seo_optimization_prompt,
-    campaign_plan_prompt,
-    seo_lighthouse_prompt,
-    landingpage_strategy_contextual_prompt,
-    monthly_report_prompt,
-    tactical_actions_prompt
+    content_briefing_prompt_fast, content_briefing_prompt_deep,
+    content_write_prompt_fast, content_write_prompt_deep,
+    competitive_analysis_prompt_fast, competitive_analysis_prompt_deep,
+    campaign_plan_prompt_fast, campaign_plan_prompt_deep,
+    landingpage_strategy_contextual_prompt_fast, landingpage_strategy_contextual_prompt_deep,
+    seo_audit_prompt_fast, seo_audit_prompt_deep,
+    seo_optimization_prompt_fast, seo_optimization_prompt_deep,
+    seo_lighthouse_prompt_fast, seo_lighthouse_prompt_deep,
+    monthly_report_prompt_fast, monthly_report_prompt_deep,
+    tactical_actions_prompt_fast, tactical_actions_prompt_deep
 )
+from agent.clarifier import extract_questions_from_response, merge_clarifications
 from agent.tools.lighthouse_runner import run_lighthouse
 from agent.loader import load_html, extract_seo_signals, load_pdf
-import json
-import os
+from agent.customer_memory import load_customer_memory
 
 llm = ChatOpenAI(model="gpt-4o")
 
-def search_google(brand_or_domain):
+
+def search_google(brand_or_domain: str) -> list[str]:
     return [
         f"https://www.linkedin.com/company/{brand_or_domain}",
         f"https://news.google.com/search?q={brand_or_domain}"
     ]
 
-def get_context_from_text_or_url(text: str, url: str):
+
+def get_context_from_text_or_url(
+    text: str,
+    url: str,
+    customer_id: Optional[str] = None
+) -> str:
+    """
+    Lädt Kontext aus Kunden-Memory, reinem Text oder einer URL.
+    """
     context = ""
+    if customer_id:
+        context += load_customer_memory(customer_id) + "\n\n"
     if text and len(text.strip().split()) > 50:
         context += text.strip()
     if url:
         try:
-            html_text = load_html(url)
-            context += "\n" + html_text
+            context += "\n" + load_html(url)
         except Exception as e:
             context += f"\n[Fehler beim Laden von {url}: {e}]"
     if not context.strip():
-        raise ValueError("Kein verwertbarer Inhalt vorhanden (Text oder URL).")
+        raise ValueError("Kein verwertbarer Inhalt vorhanden (Text, URL oder Kunden-Memory).")
     return context
 
-def run_agent(mode: str, **kwargs):
-    if mode in ["briefing_overview", "briefing_analysis"]:
-        context = get_context_from_text_or_url(kwargs.get("text", ""), kwargs.get("url", ""))
-        prompt = content_briefing_prompt.format(context=context)
-        return llm.invoke(prompt).content
 
-    elif mode == "briefing_write":
-        zielgruppe = kwargs.get("zielgruppe")
-        tonalitaet = kwargs.get("tonalitaet")
-        thema = kwargs.get("thema")
-        if not all([zielgruppe, tonalitaet, thema]):
+def run_agent(
+    task: str,
+    reasoning_mode: str = "fast",
+    conversation_id: Optional[str] = None,
+    clarifications: Optional[Dict[str, str]] = None,
+    **kwargs: Any
+) -> Dict[str, Any]:
+    """
+    Führt den angegebenen Task im Fast- oder Deep-Reasoning-Modus aus.
+
+    Args:
+        task: Eindeutiger Task-Name (z.B. 'briefing_overview', 'seo_audit', …).
+        reasoning_mode: 'fast' oder 'deep'.
+        conversation_id: ID für Session (wird neu erzeugt, wenn None).
+        clarifications: Antworten auf vorherige Rückfragen (nur deep-Modus).
+        **kwargs: Task-spezifische Parameter.
+
+    Returns:
+        {
+          "response": str,       # Modell-Antwort (inkl. CoT bei deep)
+          "questions": [str],    # Neue Rückfragen (leer bei fast)
+          "conversation_id": str # Für Folgeaufrufe
+        }
+    """
+    # 1) Session-ID
+    if conversation_id is None:
+        conversation_id = str(uuid.uuid4())
+
+    # 2) Prompt-Auswahl
+    prompt = None
+    if task in ("briefing_overview", "briefing_analysis"):
+        ctx = get_context_from_text_or_url(kwargs.get("text", ""), kwargs.get("url", ""), kwargs.get("customer_id"))
+        tmpl = content_briefing_prompt_fast if reasoning_mode == "fast" else content_briefing_prompt_deep
+        prompt = tmpl.format(context=ctx)
+
+    elif task == "briefing_write":
+        zg = kwargs.get("zielgruppe"); ton = kwargs.get("tonalitaet"); th = kwargs.get("thema")
+        if not all([zg, ton, th]):
             raise ValueError("Zielgruppe, Tonalität und Thema sind Pflichtfelder.")
-        prompt = content_write_prompt.format(
-            zielgruppe=zielgruppe,
-            tonalitaet=tonalitaet,
-            thema=thema
-        )
-        return llm.invoke(prompt).content
+        tmpl = content_write_prompt_fast if reasoning_mode == "fast" else content_write_prompt_deep
+        prompt = tmpl.format(zielgruppe=zg, tonalitaet=ton, thema=th)
 
-    elif mode == "vergleich":
+    elif task == "vergleich":
+        # Kunde vs. Wettbewerber
         if kwargs.get("eigene_url") and kwargs.get("wettbewerber_urls"):
-            context_kunde = load_html(kwargs["eigene_url"])
-            ergebnisse = []
+            ctx_k = load_html(kwargs["eigene_url"])
+            results = []
             for url in kwargs["wettbewerber_urls"]:
                 try:
-                    context_mitbewerber = load_html(url.strip())
+                    ctx_m = load_html(url.strip())
                     for link in search_google(url.strip()):
-                        context_mitbewerber += "\n" + load_html(link)
-                    prompt = competitive_analysis_prompt.format(
-                        context_kunde=context_kunde,
-                        context_mitbewerber=context_mitbewerber
-                    )
-                    result = llm.invoke(prompt).content
-                    ergebnisse.append(f"🔗 {url}\n{result}")
+                        ctx_m += "\n" + load_html(link)
+                    tmpl = competitive_analysis_prompt_fast if reasoning_mode == "fast" else competitive_analysis_prompt_deep
+                    pr = tmpl.format(context_kunde=ctx_k, context_mitbewerber=ctx_m)
+                    results.append(f"🔗 {url}\n" + llm.invoke(pr).content)
                 except Exception as e:
-                    ergebnisse.append(f"❌ Fehler bei {url}: {str(e)}")
-            return "\n\n---\n\n".join(ergebnisse)
+                    results.append(f"❌ Fehler bei {url}: {e}")
+            resp = "\n\n---\n\n".join(results)
+            return {"response": resp, "questions": [], "conversation_id": conversation_id}
         else:
-            context_kunde = kwargs.get("text_kunde")
-            context_mitbewerber = kwargs.get("text_mitbewerber")
-            if not context_kunde or not context_mitbewerber:
+            ck, cm = kwargs.get("text_kunde"), kwargs.get("text_mitbewerber")
+            if not ck or not cm:
                 raise ValueError("Beide Texte (Kunde & Mitbewerber) werden benötigt")
-            prompt = competitive_analysis_prompt.format(
-                context_kunde=context_kunde,
-                context_mitbewerber=context_mitbewerber
-            )
-            return llm.invoke(prompt).content
+            tmpl = competitive_analysis_prompt_fast if reasoning_mode == "fast" else competitive_analysis_prompt_deep
+            prompt = tmpl.format(context_kunde=ck, context_mitbewerber=cm)
 
-    elif mode == "seo_audit":
-        url = kwargs.get("url")
-        text = kwargs.get("text", "")
-        context = get_context_from_text_or_url(text, url)
-
-        signals = extract_seo_signals(url)
+    elif task == "seo_audit":
+        ctx = get_context_from_text_or_url(kwargs.get("text", ""), kwargs.get("url", ""), kwargs.get("customer_id"))
+        signals = extract_seo_signals(kwargs.get("url", ""))
         try:
-            lighthouse = run_lighthouse(url) if url else {}
-            lighthouse_score = lighthouse.get("categories", {}).get("seo", {})
+            lh = run_lighthouse(kwargs.get("url", "")) or {}
+            seo_score = lh.get("categories", {}).get("seo", {})
         except EnvironmentError as e:
-            lighthouse_score = {"warnung": str(e)}
+            seo_score = {"warnung": str(e)}
+        combined = (
+            f"TEXT-INHALT:\n{ctx}\n\n"
+            f"TECHNIK:\n{json.dumps(signals, indent=2)}\n\n"
+            f"LIGHTHOUSE:\n{json.dumps(seo_score, indent=2)}"
+        )
+        tmpl = seo_audit_prompt_fast if reasoning_mode == "fast" else seo_audit_prompt_deep
+        prompt = tmpl.format(context=combined)
 
-        combined_context = f"TEXT-INHALT:\n{context}\n\nTECHNIK:\n{json.dumps(signals, indent=2)}\n\nLIGHTHOUSE:\n{json.dumps(lighthouse_score, indent=2)}"
-        prompt = seo_audit_prompt.format(context=combined_context)
-        return llm.invoke(prompt).content
-
-    elif mode == "seo_optimize":
-        url = kwargs.get("url")
-        context = kwargs.get("text", "")
-        audit_pdf_path = kwargs.get("audit_pdf_path")
-        audit_text = load_pdf(audit_pdf_path) if audit_pdf_path else ""
-
-        full_context = context
+    elif task == "seo_optimize":
+        # bleibt Custom-Flow, aber mit Deep-Reasoning-Loop
+        url = kwargs.get("url", ""); txt = kwargs.get("text", "")
+        audit_pdf = kwargs.get("audit_pdf_path")
+        full = get_context_from_text_or_url(txt, url, kwargs.get("customer_id"))
         if url:
-            html_text = load_html(url)
-            seo_signals = extract_seo_signals(url)
-            full_context += f"\n\nWebsite-Text:\n{html_text}"
-            full_context += f"\n\nSEO-Signale:\n{json.dumps(seo_signals, indent=2)}"
-        if audit_text:
-            full_context += f"\n\nSEO Audit Report:\n{audit_text}"
+            full += "\n\nWebsite-Text:\n" + load_html(url)
+            full += "\n\nSEO-Signale:\n" + json.dumps(extract_seo_signals(url), indent=2)
+        if audit_pdf and os.path.exists(audit_pdf):
+            full += "\n\nSEO Audit Report:\n" + load_pdf(audit_pdf)
 
-        checklist = """
-Berücksichtige für deine Optimierung folgende Bereiche:
-1. On-Page-SEO (H-Struktur, Meta-Daten, interne Verlinkung)
-2. Technisches SEO (Performance, Strukturierte Daten, Mobile UX)
-3. Content-Marketing (Themenideen, Erweiterung)
-4. Off-Page-SEO (Backlinks, Erwähnungen)
-5. Lokales SEO (Google Business, Standortoptimierung)
-6. Markups & strukturierte Daten (Schema.org, FAQ, Article, LocalBusiness etc.)
-7. LLM-Optimierung (AIO, AEO, GEO für besseres AI-Auffinden & Verstehen)
-"""
+        # Vereinfachter Prompt
+        prompt = seo_optimization_prompt_fast.format(context=full)
+        if reasoning_mode == "deep":
+            prompt = seo_optimization_prompt_deep.format(context=full)
 
-        prompt = f"""
-{checklist}
+    elif task == "campaign_plan":
+        ctx = get_context_from_text_or_url(kwargs.get("text", ""), kwargs.get("url", ""), kwargs.get("customer_id"))
+        tmpl = campaign_plan_prompt_fast if reasoning_mode == "fast" else campaign_plan_prompt_deep
+        prompt = tmpl.format(context=ctx)
 
-Analysiere den gegebenen Kontext und gib eine priorisierte SEO-Roadmap aus:
-
-- ✅ Kurzfristige Maßnahmen (1–7 Tage):
-- 🔄 Mittelfristige Maßnahmen (2–4 Wochen):
-- 🚀 Langfristige Empfehlungen (4+ Wochen):
-
-Generiere zusätzlich einen konkreten optimierten Beispieltext für die analysierte Seite.
-Erkläre abschließend, warum du diese Änderungen vorgenommen hast.
-
-Kontext:
-{full_context}
-"""
-        return llm.invoke(prompt).content
-
-    elif mode == "campaign_plan":
-        context = get_context_from_text_or_url(kwargs.get("text", ""), kwargs.get("url", ""))
-        campaign_prompt = campaign_plan_prompt.format(context=context)
-        return llm.invoke(campaign_prompt).content
-
-    elif mode == "seo_lighthouse":
+    elif task == "seo_lighthouse":
         url = kwargs.get("url")
         if not url:
             raise ValueError("URL für Lighthouse-Analyse fehlt.")
@@ -159,38 +169,51 @@ Kontext:
             seo_data = json.dumps(report["categories"]["seo"], indent=2)
         except EnvironmentError as e:
             seo_data = json.dumps({"warnung": str(e)}, indent=2)
-        prompt = seo_lighthouse_prompt.format(context=seo_data)
-        return llm.invoke(prompt).content
+        tmpl = seo_lighthouse_prompt_fast if reasoning_mode == "fast" else seo_lighthouse_prompt_deep
+        prompt = tmpl.format(context=seo_data)
 
-    elif mode == "landingpage_strategy":
-        url = kwargs.get("url", "")
-        text = kwargs.get("text", "")
-        pdf_path = kwargs.get("pdf_path", "")
-
-        context_website = load_html(url) if url else text
-        context_anhang = load_pdf(pdf_path) if pdf_path else ""
-
-        prompt = landingpage_strategy_contextual_prompt.format(
-            context_website=context_website,
-            context_anhang=context_anhang
+    elif task == "landingpage_strategy":
+        text = kwargs.get("text", ""); url = kwargs.get("url", ""); pdfp = kwargs.get("pdf_path", "")
+        ctx_web = load_html(url) if url else text
+        ctx_att = load_pdf(pdfp) if pdfp else ""
+        tmpl = (
+            landingpage_strategy_contextual_prompt_fast
+            if reasoning_mode == "fast"
+            else landingpage_strategy_contextual_prompt_deep
         )
-        return llm.invoke(prompt).content
+        prompt = tmpl.format(context_website=ctx_web, context_anhang=ctx_att)
 
-    elif mode == "monthly_report":
-        context = get_context_from_text_or_url(kwargs.get("text", ""), kwargs.get("url", ""))
-        audit_pdf_path = kwargs.get("audit_pdf_path")
-        if audit_pdf_path and os.path.exists(audit_pdf_path):
-            context += f"\n\nPDF Anhang:\n{load_pdf(audit_pdf_path)}"
-        prompt = monthly_report_prompt.format(context=context)
-        return llm.invoke(prompt).content
+    elif task == "monthly_report":
+        ctx = get_context_from_text_or_url(kwargs.get("text", ""), kwargs.get("url", ""), kwargs.get("customer_id"))
+        pdfp = kwargs.get("audit_pdf_path")
+        if pdfp and os.path.exists(pdfp):
+            ctx += "\n\nPDF Anhang:\n" + load_pdf(pdfp)
+        tmpl = monthly_report_prompt_fast if reasoning_mode == "fast" else monthly_report_prompt_deep
+        prompt = tmpl.format(context=ctx)
 
-    elif mode == "tactical_actions":
-        context = get_context_from_text_or_url(kwargs.get("text", ""), kwargs.get("url", ""))
-        audit_pdf_path = kwargs.get("audit_pdf_path")
-        if audit_pdf_path and os.path.exists(audit_pdf_path):
-            context += f"\n\n[Ergänzende Analyse aus PDF]:\n{load_pdf(audit_pdf_path)}"
-        prompt = tactical_actions_prompt.format(context=context)
-        return llm.invoke(prompt).content
+    elif task == "tactical_actions":
+        ctx = get_context_from_text_or_url(kwargs.get("text", ""), kwargs.get("url", ""), kwargs.get("customer_id"))
+        pdfp = kwargs.get("audit_pdf_path")
+        if pdfp and os.path.exists(pdfp):
+            ctx += "\n\n[Ergänzende Analyse aus PDF]:\n" + load_pdf(pdfp)
+        tmpl = tactical_actions_prompt_fast if reasoning_mode == "fast" else tactical_actions_prompt_deep
+        prompt = tmpl.format(context=ctx)
 
     else:
-        raise ValueError(f"Unbekannter Modus: {mode}")
+        raise ValueError(f"Unbekannter Task: {task}")
+
+    # 3) Deep-Loop: Klarstellungen mergen
+    if reasoning_mode == "deep" and clarifications:
+        prompt = merge_clarifications(prompt, clarifications)
+
+    # 4) LLM-Aufruf
+    resp = llm.invoke(prompt).content
+
+    # 5) Rückfragen extrahieren (nur deep)
+    questions = extract_questions_from_response(resp) if reasoning_mode == "deep" else []
+
+    return {
+        "response": resp,
+        "questions": questions,
+        "conversation_id": conversation_id
+    }

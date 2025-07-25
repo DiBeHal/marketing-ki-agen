@@ -26,15 +26,18 @@ COPY . /app
 # --------------------------------------
 # 5) Python-Abhängigkeiten installieren
 # --------------------------------------
-RUN pip install --upgrade pip
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 # --------------------------------------
-# 6) Railway erwartet Port 8000 exposed
+# 6) Ports für FastAPI & Streamlit (Streamlit via Railway auf 8080)
 # --------------------------------------
-EXPOSE 8000
+EXPOSE 8000 8080
 
 # --------------------------------------
-# 7) Start-Kommando für FastAPI + Streamlit
+# 7) Start-Script
 # --------------------------------------
-CMD ["bash", "launch.sh"]
+COPY launch.sh /app/launch.sh
+RUN chmod +x /app/launch.sh
+
+CMD ["/app/launch.sh"]
