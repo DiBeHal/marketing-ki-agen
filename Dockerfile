@@ -40,4 +40,6 @@ EXPOSE 8000 8080
 COPY launch.sh /app/launch.sh
 RUN chmod +x /app/launch.sh
 
+ENV PYTHONPATH=/app
+
 CMD ["/app/launch.sh"]
