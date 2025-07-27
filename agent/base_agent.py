@@ -31,10 +31,6 @@ llm = ChatOpenAI(model="gpt-4o", max_tokens=3000)
 
 
 def search_google(brand_or_domain: str) -> list[str]:
-    """
-    Baut Such-URLs für LinkedIn und Google News basierend auf
-    einer URL oder einem kurzen Namen.
-    """
     parsed = urlparse(brand_or_domain)
     host = parsed.netloc or brand_or_domain
     if host.startswith("www."):
@@ -51,9 +47,6 @@ def get_context_from_text_or_url(
     url: str,
     customer_id: Optional[str] = None
 ) -> str:
-    """
-    Lädt Kontext aus Kunden-Memory, reinem Text oder einer URL.
-    """
     context = ""
     if customer_id:
         context += load_customer_memory(customer_id) + "\n\n"
@@ -76,22 +69,11 @@ def run_agent(
     clarifications: Optional[Dict[str, str]] = None,
     **kwargs: Any
 ) -> Dict[str, Any]:
-    """
-    Führt den angegebenen Task im Fast- oder Deep-Reasoning-Modus aus.
-
-    Returns:
-        {
-          "response": str,       # Modell-Antwort
-          "questions": [str],    # Neue Rückfragen (nur deep)
-          "conversation_id": str # Für Folgeaufrufe
-        }
-    """
     # 1) Session-ID
     if conversation_id is None:
         conversation_id = str(uuid.uuid4())
 
     # 2) Prompt-Auswahl
-    prompt = None
     if task in ("briefing_overview", "briefing_analysis"):
         ctx = get_context_from_text_or_url(
             kwargs.get("text", ""), kwargs.get("url", ""), kwargs.get("customer_id")
@@ -107,8 +89,8 @@ def run_agent(
         prompt = tmpl.format(zielgruppe=zg, tonalitaet=ton, thema=th)
 
     elif task == "vergleich":
-        # Multi-URL-Wettbewerbsanalyse
         if kwargs.get("eigene_url") and kwargs.get("wettbewerber_urls"):
+            # Multi-URL-Wettbewerbsanalyse
             ctx_k = load_html(kwargs["eigene_url"])
             results = []
             for url in kwargs["wettbewerber_urls"]:
@@ -116,27 +98,30 @@ def run_agent(
                     ctx_m = load_html(url.strip())
                     for link in search_google(url.strip()):
                         ctx_m += "\n" + load_html(link)
-                    tmpl = (competitive_analysis_prompt_fast
-                            if reasoning_mode == "fast"
-                            else competitive_analysis_prompt_deep)
+                    tmpl = (
+                        competitive_analysis_prompt_fast
+                        if reasoning_mode == "fast"
+                        else competitive_analysis_prompt_deep
+                    )
                     pr = tmpl.format(context_kunde=ctx_k, context_mitbewerber=ctx_m)
                     resp = llm.invoke(pr)
                     content = resp.content
-                    # Usage logging
-                    log_event({
-                        "type": "usage",
-                        "customer_id": kwargs.get("customer_id"),
-                        "conversation_id": conversation_id,
-                        "task": task,
-                        "mode": reasoning_mode,
-                        "input_tokens": resp.usage.prompt_tokens,
-                        "output_tokens": resp.usage.completion_tokens
-                    })
+                    # usage logging, nur wenn vorhanden
+                    if hasattr(resp, "usage"):
+                        log_event({
+                            "type": "usage",
+                            "customer_id": kwargs.get("customer_id"),
+                            "conversation_id": conversation_id,
+                            "task": task,
+                            "mode": reasoning_mode,
+                            "input_tokens": resp.usage.prompt_tokens,
+                            "output_tokens": resp.usage.completion_tokens
+                        })
                     results.append(f"🔗 {url}\n{content}")
                 except Exception as e:
                     results.append(f"❌ Fehler bei {url}: {e}")
             aggregated = "\n\n---\n\n".join(results)
-            # Task-Run logging
+            # task-run logging
             log_event({
                 "type": "task_run",
                 "customer_id": kwargs.get("customer_id"),
@@ -152,9 +137,11 @@ def run_agent(
             ck = kwargs.get("text_kunde"); cm = kwargs.get("text_mitbewerber")
             if not ck or not cm:
                 raise ValueError("Beide Texte (Kunde & Mitbewerber) werden benötigt")
-            tmpl = (competitive_analysis_prompt_fast
-                    if reasoning_mode == "fast"
-                    else competitive_analysis_prompt_deep)
+            tmpl = (
+                competitive_analysis_prompt_fast
+                if reasoning_mode == "fast"
+                else competitive_analysis_prompt_deep
+            )
             prompt = tmpl.format(context_kunde=ck, context_mitbewerber=cm)
 
     elif task == "seo_audit":
@@ -184,18 +171,22 @@ def run_agent(
             full += "\n\nSEO-Signale:\n" + json.dumps(extract_seo_signals(url), indent=2)
         if audit_pdf and os.path.exists(audit_pdf):
             full += "\n\nSEO Audit Report:\n" + load_pdf(audit_pdf)
-        tmpl = (seo_optimization_prompt_fast
-                if reasoning_mode == "fast"
-                else seo_optimization_prompt_deep)
+        tmpl = (
+            seo_optimization_prompt_fast
+            if reasoning_mode == "fast"
+            else seo_optimization_prompt_deep
+        )
         prompt = tmpl.format(context=full)
 
     elif task == "campaign_plan":
         ctx = get_context_from_text_or_url(
             kwargs.get("text", ""), kwargs.get("url", ""), kwargs.get("customer_id")
         )
-        tmpl = (campaign_plan_prompt_fast
-                if reasoning_mode == "fast"
-                else campaign_plan_prompt_deep)
+        tmpl = (
+            campaign_plan_prompt_fast
+            if reasoning_mode == "fast"
+            else campaign_plan_prompt_deep
+        )
         prompt = tmpl.format(context=ctx)
 
     elif task == "seo_lighthouse":
@@ -207,9 +198,11 @@ def run_agent(
             seo_data = json.dumps(report["categories"]["seo"], indent=2)
         except EnvironmentError as e:
             seo_data = json.dumps({"warnung": str(e)}, indent=2)
-        tmpl = (seo_lighthouse_prompt_fast
-                if reasoning_mode == "fast"
-                else seo_lighthouse_prompt_deep)
+        tmpl = (
+            seo_lighthouse_prompt_fast
+            if reasoning_mode == "fast"
+            else seo_lighthouse_prompt_deep
+        )
         prompt = tmpl.format(context=seo_data)
 
     elif task == "landingpage_strategy":
@@ -230,9 +223,11 @@ def run_agent(
         pdfp = kwargs.get("audit_pdf_path")
         if pdfp and os.path.exists(pdfp):
             ctx += "\n\nPDF Anhang:\n" + load_pdf(pdfp)
-        tmpl = (monthly_report_prompt_fast
-                if reasoning_mode == "fast"
-                else monthly_report_prompt_deep)
+        tmpl = (
+            monthly_report_prompt_fast
+            if reasoning_mode == "fast"
+            else monthly_report_prompt_deep
+        )
         prompt = tmpl.format(context=ctx)
 
     elif task == "tactical_actions":
@@ -240,11 +235,13 @@ def run_agent(
             kwargs.get("text", ""), kwargs.get("url", ""), kwargs.get("customer_id")
         )
         pdfp = kwargs.get("audit_pdf_path")
-        if pdfp and os.path.exists(audit_pdf):
-            ctx += "\n\n[Ergänzende Analyse aus PDF]:\n" + load_pdf(audit_pdf)
-        tmpl = (tactical_actions_prompt_fast
-                if reasoning_mode == "fast"
-                else tactical_actions_prompt_deep)
+        if pdfp and os.path.exists(pdfp):
+            ctx += "\n\n[Ergänzende Analyse aus PDF]:\n" + load_pdf(pdfp)
+        tmpl = (
+            tactical_actions_prompt_fast
+            if reasoning_mode == "fast"
+            else tactical_actions_prompt_deep
+        )
         prompt = tmpl.format(context=ctx)
 
     else:
@@ -256,23 +253,24 @@ def run_agent(
 
     # 4) LLM-Aufruf
     resp = llm.invoke(prompt)
-    content = resp.content
+    content = getattr(resp, "content", str(resp))
 
-    # Usage logging
-    log_event({
-        "type": "usage",
-        "customer_id": kwargs.get("customer_id"),
-        "conversation_id": conversation_id,
-        "task": task,
-        "mode": reasoning_mode,
-        "input_tokens": resp.usage.prompt_tokens,
-        "output_tokens": resp.usage.completion_tokens
-    })
+    # 5) Usage-Logging nur wenn verfügbar
+    if hasattr(resp, "usage"):
+        log_event({
+            "type": "usage",
+            "customer_id": kwargs.get("customer_id"),
+            "conversation_id": conversation_id,
+            "task": task,
+            "mode": reasoning_mode,
+            "input_tokens": resp.usage.prompt_tokens,
+            "output_tokens": resp.usage.completion_tokens
+        })
 
-    # 5) Rückfragen extrahieren (nur deep)
+    # 6) Rückfragen extrahieren (nur deep)
     questions = extract_questions_from_response(content) if reasoning_mode == "deep" else []
 
-    # Task-Run logging
+    # 7) Task-Run-Logging
     log_event({
         "type": "task_run",
         "customer_id": kwargs.get("customer_id"),

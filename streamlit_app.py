@@ -81,22 +81,28 @@ if page == "⚙️ Admin-Dashboard":
     customers = list_customer_ids()
     overview = []
     for cid in customers:
-        tasks = df[(df.type == "task_run") & (df.customer_id == cid)]
+        tasks = df[(df["type"] == "task_run") & (df["customer_id"] == cid)]
         last = tasks.sort_values('timestamp', ascending=False).head(3)
         last_str = "\n".join(f"{r['task']} @ {r['timestamp']}" for _, r in last.iterrows()) or "-"
-        ratings = df[(df.type == "rating") & (df.customer_id == cid)].rating
+        ratings = df[(df["type"] == "rating") & (df["customer_id"] == cid)]["rating"]
         avg = round(ratings.mean(), 2) if len(ratings) > 0 else "-"
         overview.append({"Kunden-ID": cid, "Letzte Tasks": last_str, "Ø Bewertung": avg})
     st.table(overview)
 
     # 2) Kosten & Token-Verbrauch
     st.subheader("💸 Kosten & Token-Verbrauch")
-    usage = df[df.type == "usage"]
+    usage = df[df["type"] == "usage"]
     if not usage.empty:
-        usage_grp = usage.groupby(['customer_id', 'mode']) \
-                         .agg({'input_tokens':'sum','output_tokens':'sum'}) \
-                         .reset_index()
-        usage_grp['cost'] = usage_grp.input_tokens * 0.00000465 + usage_grp.output_tokens * 0.00001395
+        usage_grp = (
+            usage
+            .groupby(['customer_id', 'mode'])
+            .agg({'input_tokens': 'sum', 'output_tokens': 'sum'})
+            .reset_index()
+        )
+        usage_grp['cost'] = (
+            usage_grp['input_tokens'] * 0.00000465 +
+            usage_grp['output_tokens'] * 0.00001395
+        )
         st.dataframe(usage_grp)
         pivot = usage_grp.pivot(index='customer_id', columns='mode', values='cost').fillna(0)
         st.bar_chart(pivot)
@@ -105,15 +111,14 @@ if page == "⚙️ Admin-Dashboard":
 
     # 3) Trend- & Zeitreihen-Analysen
     st.subheader("📈 Trend-Analysen")
-    tasks_df = df[df.type == "task_run"]
+    tasks_df = df[df["type"] == "task_run"]
     if not tasks_df.empty:
         daily_tasks = tasks_df.set_index('timestamp').resample('D').size().rename('tasks')
         st.line_chart(daily_tasks)
     else:
         st.info("Noch keine Task-Daten.")
     if not usage.empty:
-        daily_usage = usage.set_index('timestamp').resample('D') \
-                           .sum()[['input_tokens','output_tokens']]
+        daily_usage = usage.set_index('timestamp').resample('D').sum()[['input_tokens','output_tokens']]
         st.area_chart(daily_usage)
     else:
         st.info("Noch keine Usage-Daten für Trend.")
@@ -129,11 +134,11 @@ if page == "⚙️ Admin-Dashboard":
 
     # 6) Qualitäts- & Feedback-Loop
     st.subheader("🗣️ Feedback & Ratings")
-    feedback = df[df.type == "rating"]
+    feedback = df[df["type"] == "rating"]
     if not feedback.empty:
         st.dataframe(feedback[['customer_id','rating','comment','timestamp']])
         words = Counter()
-        for c in feedback.comment.dropna():
+        for c in feedback['comment'].dropna():
             for w in c.lower().split():
                 words[w] += 1
         st.write("Top 5 Feedback-Begriffe:", words.most_common(5))
@@ -144,10 +149,10 @@ if page == "⚙️ Admin-Dashboard":
     st.subheader("🔍 Details pro Kunde")
     for cid in customers:
         with st.expander(f"Kunde {cid}"):
-            st.write("Letzte Tasks", tasks_df[tasks_df.customer_id == cid][['task','timestamp']])
-            st.write("Token Usage", usage[usage.customer_id == cid][['mode','input_tokens','output_tokens','timestamp']])
-            st.write("Feedback", feedback[feedback.customer_id == cid][['rating','comment','timestamp']])
-            st.write("Rohes Log", df[df.customer_id == cid])
+            st.write("Letzte Tasks", tasks_df[tasks_df["customer_id"] == cid][['task','timestamp']])
+            st.write("Token Usage", usage[usage["customer_id"] == cid][['mode','input_tokens','output_tokens','timestamp']])
+            st.write("Feedback", feedback[feedback["customer_id"] == cid][['rating','comment','timestamp']])
+            st.write("Rohes Log", df[df["customer_id"] == cid])
 
     st.stop()
 
@@ -249,7 +254,6 @@ elif task == "Kampagnenplanung":
 if st.button("✅ Absenden"):
     params = {"customer_id": selected_customer if selected_customer != "– Kein Kunde –" else None}
 
-    # Task-Auswahl
     if task == "Content Briefing":
         if briefing_typ == "Analyse":
             params.update({
@@ -260,22 +264,19 @@ if st.button("✅ Absenden"):
             task_id = "briefing_analysis"
         else:
             if not (zielgruppe and tonalitaet and thema):
-                st.error("❗ Bitte Zielgruppe, Tonalität und Thema angeben.")
-                st.stop()
+                st.error("❗ Bitte Zielgruppe, Tonalität und Thema angeben."); st.stop()
             params.update({"zielgruppe": zielgruppe, "tonalitaet": tonalitaet, "thema": thema})
             task_id = "briefing_write"
 
     elif task == "Content-Vergleich":
         if not (kunde and mitbewerber):
-            st.error("❗ Bitte beide Texte ausfüllen.")
-            st.stop()
+            st.error("❗ Bitte beide Texte ausfüllen."); st.stop()
         params.update({"text_kunde": kunde, "text_mitbewerber": mitbewerber})
         task_id = "vergleich"
 
     elif task == "Wettbewerbsanalyse (Webseiten)":
         if not (eigene_url and wettbewerber_urls.strip()):
-            st.error("❗ Bitte eigene URL und Wettbewerber-URLs angeben.")
-            st.stop()
+            st.error("❗ Bitte eigene URL und Wettbewerber-URLs angeben."); st.stop()
         params.update({
             "eigene_url": eigene_url,
             "wettbewerber_urls": [u.strip() for u in wettbewerber_urls.splitlines() if u.strip()],
@@ -293,17 +294,13 @@ if st.button("✅ Absenden"):
 
     elif task == "Technisches SEO (Lighthouse)":
         if not url:
-            st.error("❗ Bitte gültige URL angeben."); st.stop()
-        params.update({"url": url})
-        task_id = "seo_lighthouse"
+            st.error("  Verpflichtende URL angeben."); st.stop()
+        params.update({"url": url}); task_id = "seo_lighthouse"
 
     elif task == "Kampagnenplanung":
         params.update({
             "text": customer_memory + "\n\n" + context,
-            "url": url,
-            "thema": thema,
-            "kanal": kanal,
-            "pdf_path": optional_pdf_path
+            "url": url, "thema": thema, "kanal": kanal, "pdf_path": optional_pdf_path
         })
         task_id = "campaign_plan"
 
@@ -321,7 +318,6 @@ if st.button("✅ Absenden"):
     else:
         st.stop()
 
-    # LLM-Call
     result = run_agent(
         task=task_id,
         reasoning_mode=mode,
@@ -333,7 +329,6 @@ if st.button("✅ Absenden"):
     st.session_state.questions = result["questions"]
     st.session_state.conv_id    = result["conversation_id"]
 
-    # Task-Run loggen
     log_event({
         "type": "task_run",
         "customer_id": params.get("customer_id"),
@@ -341,7 +336,6 @@ if st.button("✅ Absenden"):
         "mode": mode
     })
 
-    # Klarfrage-Felder initialisieren
     for i in range(len(st.session_state.questions)):
         key = f"clar_{i}"
         if key not in st.session_state:
