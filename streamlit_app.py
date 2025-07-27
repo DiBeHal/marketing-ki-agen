@@ -2,32 +2,17 @@ import os
 import hashlib
 from dotenv import load_dotenv
 import streamlit as st
-import random
-import string
-import pandas as pd
-from collections import Counter
 
-from agent.customer_memory import (
-    save_customer_data,
-    list_customer_ids,
-    load_customer_memory,
-    save_customer_memory
-)
-from agent.loader import load_pdf
-from agent.base_agent import run_agent
-from agent.activity_log import log_event, get_events
-
-# Load .env (lokal)
+# lokal .env lesen
 load_dotenv()
 
-# -----------------------------------------------------------------------------
-# Einfacher HTTP-Basic–ähnlicher Login am Streamlit-Frontend
-# -----------------------------------------------------------------------------
 def check_credentials(user: str, pwd: str) -> bool:
     expected_user = os.getenv("APP_USER")
     expected_hash = os.getenv("APP_PASS_HASH")
-    provided_hash = hashlib.sha256(pwd.encode()).hexdigest()
-    return user == expected_user and provided_hash == expected_hash
+    return (
+        user == expected_user
+        and hashlib.sha256(pwd.encode()).hexdigest() == expected_hash
+    )
 
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
@@ -39,9 +24,9 @@ if not st.session_state.authenticated:
     if st.button("Anmelden"):
         if check_credentials(user, pwd):
             st.session_state.authenticated = True
-            st.experimental_rerun()
         else:
             st.error("Ungültige Anmeldedaten")
+    # Stoppe hier, bis sich jemand erfolgreich angemeldet hat
     st.stop()
 
 # -----------------------------------------------------------------------------
