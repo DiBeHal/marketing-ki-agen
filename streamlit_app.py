@@ -20,13 +20,13 @@ from agent.loader import load_pdf
 from agent.base_agent import run_agent
 from agent.activity_log import log_event, get_events
 
-# -----------------------------------------------------------------------------
-# Environment laden (lokal & Produktion)
+# -----------------------------------------------------------------------------  
+# Environment laden (lokal & Produktion)  
 # -----------------------------------------------------------------------------
 load_dotenv()
 
-# -----------------------------------------------------------------------------
-# Einfache Authentifizierung
+# -----------------------------------------------------------------------------  
+# Einfache Authentifizierung  
 # -----------------------------------------------------------------------------
 def check_credentials(user: str, pwd: str) -> bool:
     expected_user = os.getenv("APP_USER")
@@ -50,8 +50,8 @@ if not st.session_state.authenticated:
             st.error("Ungültige Anmeldedaten")
     st.stop()
 
-# -----------------------------------------------------------------------------
-# Nach erfolgreichem Login: Streamlit-Konfiguration
+# -----------------------------------------------------------------------------  
+# Nach erfolgreichem Login: Streamlit-Konfiguration  
 # -----------------------------------------------------------------------------
 st.set_page_config(page_title="Kunden-Upload & KI-Agent", layout="wide")
 
@@ -60,17 +60,18 @@ for key in ('last_task', 'last_mode', 'conv_id', 'questions', 'response'):
     if key not in st.session_state:
         st.session_state[key] = None if key in ('last_task','last_mode','conv_id') else []
 
-# -----------------------------------------------------------------------------
-# Sidebar: User- vs. Admin-Ansicht
+# -----------------------------------------------------------------------------  
+# Sidebar: User- vs. Admin-Ansicht  
 # -----------------------------------------------------------------------------
 page = st.sidebar.selectbox("Ansicht wählen:", ["🎯 User-Tasks", "⚙️ Admin-Dashboard"])
 
-# ===============================
-# Admin-Dashboard
+# ===============================  
+# Admin-Dashboard  
 # ===============================
 if page == "⚙️ Admin-Dashboard":
     st.title("⚙️ Admin-Dashboard")
 
+    # Lade alle Events
     events = get_events()
     df = pd.DataFrame(events)
     if not df.empty:
@@ -156,8 +157,8 @@ if page == "⚙️ Admin-Dashboard":
 
     st.stop()
 
-# ===============================
-# User-Tasks
+# ===============================  
+# User-Tasks  
 # ===============================
 st.title("👤 Kunden-Upload & KI-Agent")
 
@@ -248,12 +249,45 @@ elif task == "Kampagnenplanung":
     thema = st.text_input("📝 Thema der Kampagne")
     kanal = st.selectbox("📢 Kanal", ["LinkedIn", "Instagram", "Blog", "E-Mail", "Facebook", "Xing"])
 
+# -------------------------------  
+# Externe Datenquellen (nur Deep-Modus)  
 # -------------------------------
-# Initialer Agent-Call
+if mode == "deep":
+    st.markdown("---")
+    st.subheader("🌐 Externe Datenquellen (Deep-Modus)")
+    rss_input      = st.text_area("RSS-Feed URLs (eine pro Zeile)", height=100)
+    trend_input    = st.text_input("Trend-Keywords (kommagetrennt)")
+    destatis_input = st.text_input("DESTATIS/Eurostat-Codes (kommagetrennt)")
+
+    st.markdown("### 📣 Ads-Bibliotheken (Deep-Modus)")
+    linkedin_input = st.text_input("LinkedIn Company Domain (z. B. unternehmensdomain.de)")
+    google_input   = st.text_input("Google Ads Search Term")
+    facebook_input = st.text_input("Facebook Page ID")
+else:
+    rss_input = trend_input = destatis_input = ""
+    linkedin_input = google_input = facebook_input = ""
+
+# -------------------------------  
+# Initialer Agent-Call  
 # -------------------------------
 if st.button("✅ Absenden"):
-    params = {"customer_id": selected_customer if selected_customer != "– Kein Kunde –" else None}
+    # Parse Deep-Inputs
+    rss_feeds_list        = [u.strip() for u in rss_input.splitlines() if u.strip()]
+    trend_keywords_list   = [k.strip() for k in trend_input.split(",") if k.strip()]
+    destatis_queries_list = [c.strip() for c in destatis_input.split(",") if c.strip()]
 
+    # Basis-Parameter
+    params = {
+        "customer_id": selected_customer if selected_customer != "– Kein Kunde –" else None,
+        "rss_feeds": rss_feeds_list,
+        "trend_keywords": trend_keywords_list,
+        "destatis_queries": destatis_queries_list,
+        "linkedin_company": linkedin_input,
+        "google_company": google_input,
+        "facebook_page": facebook_input
+    }
+
+    # Task-spezifische Parameter und Task-ID
     if task == "Content Briefing":
         if briefing_typ == "Analyse":
             params.update({
@@ -261,31 +295,33 @@ if st.button("✅ Absenden"):
                 "url": url,
                 "pdf_path": optional_pdf_path
             })
-            task_id = "briefing_analysis"
+            task_id = "content_analysis"
         else:
             if not (zielgruppe and tonalitaet and thema):
-                st.error("❗ Bitte Zielgruppe, Tonalität und Thema angeben."); st.stop()
+                st.error("❗ Bitte Zielgruppe, Tonalität und Thema angeben.")
+                st.stop()
             params.update({"zielgruppe": zielgruppe, "tonalitaet": tonalitaet, "thema": thema})
             task_id = "briefing_write"
 
     elif task == "Content-Vergleich":
         if not (kunde and mitbewerber):
-            st.error("❗ Bitte beide Texte ausfüllen."); st.stop()
+            st.error("❗ Bitte beide Texte ausfüllen.")
+            st.stop()
         params.update({"text_kunde": kunde, "text_mitbewerber": mitbewerber})
         task_id = "vergleich"
 
     elif task == "Wettbewerbsanalyse (Webseiten)":
         if not (eigene_url and wettbewerber_urls.strip()):
-            st.error("❗ Bitte eigene URL und Wettbewerber-URLs angeben."); st.stop()
+            st.error("❗ Bitte eigene URL und Wettbewerber-URLs angeben.")
+            st.stop()
         params.update({
             "eigene_url": eigene_url,
-            "wettbewerber_urls": [u.strip() for u in wettbewerber_urls.splitlines() if u.strip()],
-            "pdf_path": optional_pdf_path
+            "wettbewerber_urls": [u.strip() for u in wettbewerber_urls.splitlines() if u.strip()]
         })
         task_id = "vergleich"
 
     elif task == "SEO Audit":
-        params.update({"text": customer_memory + "\n\n" + context, "url": url, "pdf_path": optional_pdf_path})
+        params.update({"text": customer_memory + "\n\n" + context, "url": url})
         task_id = "seo_audit"
 
     elif task == "SEO Optimierung":
@@ -294,30 +330,34 @@ if st.button("✅ Absenden"):
 
     elif task == "Technisches SEO (Lighthouse)":
         if not url:
-            st.error("  Verpflichtende URL angeben."); st.stop()
-        params.update({"url": url}); task_id = "seo_lighthouse"
+            st.error("❗ Verpflichtende URL angeben.")
+            st.stop()
+        params.update({"url": url})
+        task_id = "seo_lighthouse"
 
     elif task == "Kampagnenplanung":
-        params.update({
-            "text": customer_memory + "\n\n" + context,
-            "url": url, "thema": thema, "kanal": kanal, "pdf_path": optional_pdf_path
-        })
+        params.update({"text": customer_memory + "\n\n" + context, "url": url, "thema": thema, "kanal": kanal})
         task_id = "campaign_plan"
 
     elif task == "Landingpage Strategie":
-        params.update({"text": customer_memory + "\n\n" + context, "url": url, "pdf_path": optional_pdf_path})
+        if not url:
+            st.error("❗ Verpflichtende URL angeben.")
+            st.stop()
+        params.update({"url": url})
         task_id = "landingpage_strategy"
 
     elif task == "Monatsreport":
-        params.update({"text": customer_memory + "\n\n" + context, "url": url, "audit_pdf_path": optional_pdf_path})
+        params.update({"text": customer_memory + "\n\n" + context, "url": url})
         task_id = "monthly_report"
 
     elif task == "Marketingmaßnahmen planen":
-        params.update({"text": customer_memory + "\n\n" + context, "url": url, "audit_pdf_path": optional_pdf_path})
+        params.update({"text": customer_memory + "\n\n" + context, "url": url})
         task_id = "tactical_actions"
+
     else:
         st.stop()
 
+    # Aufruf des Agents
     result = run_agent(
         task=task_id,
         reasoning_mode=mode,
@@ -336,13 +376,14 @@ if st.button("✅ Absenden"):
         "mode": mode
     })
 
+    # Initialisiere Rückfragen-Felder
     for i in range(len(st.session_state.questions)):
         key = f"clar_{i}"
         if key not in st.session_state:
             st.session_state[key] = ""
 
-# -------------------------------
-# Rückfragen-Handling (Deep-Modus)
+# -------------------------------  
+# Rückfragen-Handling (Deep-Modus)  
 # -------------------------------
 if mode == "deep" and st.session_state.questions:
     st.markdown("### 🤔 Rückfragen des Modells:")
@@ -367,8 +408,8 @@ if mode == "deep" and st.session_state.questions:
         for i in range(len(st.session_state.questions)):
             st.session_state[f"clar_{i}"] = ""
 
-# -------------------------------
-# Endgültiges Ergebnis anzeigen
+# -------------------------------  
+# Endgültiges Ergebnis anzeigen  
 # -------------------------------
 if not st.session_state.questions and st.session_state.response:
     st.subheader("📢 Ergebnis:")
