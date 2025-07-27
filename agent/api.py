@@ -2,9 +2,11 @@
 
 import os
 import uuid
+import hashlib
 from typing import Dict, Optional, Literal
 
-from fastapi import FastAPI, UploadFile
+from fastapi import FastAPI, UploadFile, Depends, HTTPException, status
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel
 
 from agent import loader, embedder, vectorstore, query, scrape_competitors
@@ -18,11 +20,31 @@ tracer = LangChainTracer()
 
 app = FastAPI()
 
+# ===== Einfaches HTTP Basic Auth für alle Endpoints =====
+security = HTTPBasic()
+
+def get_current_user(credentials: HTTPBasicCredentials = Depends(security)) -> str:
+    """
+    Prüft Username und Passwort-Hash gegen ENV-Variablen APP_USER und APP_PASS_HASH.
+    """
+    expected_user = os.getenv("APP_USER")
+    expected_hash = os.getenv("APP_PASS_HASH")
+    provided_hash = hashlib.sha256(credentials.password.encode()).hexdigest()
+    if not (credentials.username == expected_user and provided_hash == expected_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Unauthorized",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
 
 # -------------------------------
 # 1) PDF-Upload & Vektor speichern
 # -------------------------------
-@app.post("/upload-pdf/")
+@app.post(
+    "/upload-pdf/",
+    dependencies=[Depends(get_current_user)]
+)
 async def upload_pdf(file: UploadFile):
     """
     Nimmt eine PDF entgegen, extrahiert den Text,
@@ -55,7 +77,10 @@ class AskRequest(BaseModel):
     clarifications: Optional[Dict[str, str]] = None
 
 
-@app.post("/ask/")
+@app.post(
+    "/ask/",
+    dependencies=[Depends(get_current_user)]
+)
 async def ask(req: AskRequest):
     """
     Nimmt eine Frage entgegen, holt relevante Chunks
@@ -71,7 +96,6 @@ async def ask(req: AskRequest):
             conversation_id=req.conversation_id
         )
 
-    # result enthält keys: response, questions, conversation_id
     return {
         "response": result["response"],
         "questions": result["questions"],
@@ -82,7 +106,10 @@ async def ask(req: AskRequest):
 # -------------------------------
 # 3) Wettbewerber-Scraping starten
 # -------------------------------
-@app.post("/scrape-now/")
+@app.post(
+    "/scrape-now/",
+    dependencies=[Depends(get_current_user)]
+)
 async def scrape_now():
     """
     Führt den Scraper aus: lädt competitor-URLs,

@@ -1,7 +1,11 @@
-import streamlit as st
 import os
+import hashlib
+from dotenv import load_dotenv
+import streamlit as st
 import random
 import string
+import pandas as pd
+from collections import Counter
 
 from agent.customer_memory import (
     save_customer_data,
@@ -11,26 +15,146 @@ from agent.customer_memory import (
 )
 from agent.loader import load_pdf
 from agent.base_agent import run_agent
+from agent.activity_log import log_event, get_events
 
+# Load .env (lokal)
+load_dotenv()
+
+# -----------------------------------------------------------------------------
+# Einfacher HTTP-Basic–ähnlicher Login am Streamlit-Frontend
+# -----------------------------------------------------------------------------
+def check_credentials(user: str, pwd: str) -> bool:
+    expected_user = os.getenv("APP_USER")
+    expected_hash = os.getenv("APP_PASS_HASH")
+    provided_hash = hashlib.sha256(pwd.encode()).hexdigest()
+    return user == expected_user and provided_hash == expected_hash
+
+if 'authenticated' not in st.session_state:
+    st.session_state.authenticated = False
+
+if not st.session_state.authenticated:
+    st.title("🔒 Login")
+    user = st.text_input("Benutzername")
+    pwd  = st.text_input("Passwort", type="password")
+    if st.button("Anmelden"):
+        if check_credentials(user, pwd):
+            st.session_state.authenticated = True
+            st.experimental_rerun()
+        else:
+            st.error("Ungültige Anmeldedaten")
+    st.stop()
+
+# -----------------------------------------------------------------------------
+# Nach Login: App starten
+# -----------------------------------------------------------------------------
 st.set_page_config(page_title="Kunden-Upload & KI-Agent", layout="wide")
-st.title("👤 Kunden-Upload")
 
-# ===== Session-State für Deep-Loop persistieren =====
-if 'last_task' not in st.session_state:
-    st.session_state.last_task = None
-if 'last_mode' not in st.session_state:
-    st.session_state.last_mode = None
-if 'conv_id' not in st.session_state:
-    st.session_state.conv_id = None
-if 'questions' not in st.session_state:
-    st.session_state.questions = []
-if 'response' not in st.session_state:
-    st.session_state.response = ""
-# Klarstellungen werden dynamisch über eigene Keys gespeichert
+# Persist Deep-Loop Session-State
+for key in ('last_task', 'last_mode', 'conv_id', 'questions', 'response'):
+    if key not in st.session_state:
+        st.session_state[key] = None if key in ('last_task','last_mode','conv_id') else []
 
-# -------------------------------
+# Sidebar: User vs. Admin
+page = st.sidebar.selectbox("Ansicht wählen:", ["🎯 User-Tasks", "⚙️ Admin-Dashboard"])
+
+# ===============================
+# Admin-Dashboard
+# ===============================
+if page == "⚙️ Admin-Dashboard":
+    st.title("⚙️ Admin-Dashboard")
+    events = get_events()
+    df = pd.DataFrame(events)
+    if not df.empty:
+        df['timestamp'] = pd.to_datetime(df['timestamp'])
+
+    # 1) Kunden-Übersicht
+    st.subheader("🔹 Kunden-Übersicht")
+    customers = list_customer_ids()
+    overview = []
+    for cid in customers:
+        # Letzte 3 Tasks
+        tasks = df[(df.type == "task_run") & (df.customer_id == cid)]
+        last = tasks.sort_values('timestamp', ascending=False).head(3)
+        last_str = "\n".join(f"{r['task']} @ {r['timestamp']}" for _, r in last.iterrows()) or "-"
+        # Ø Bewertung
+        ratings = df[(df.type == "rating") & (df.customer_id == cid)].rating
+        avg = round(ratings.mean(), 2) if len(ratings) > 0 else "-"
+        overview.append({"Kunden-ID": cid, "Letzte Tasks": last_str, "Ø Bewertung": avg})
+    st.table(overview)
+
+    # 2) Kosten & Token-Verbrauch
+    st.subheader("💸 Kosten & Token-Verbrauch")
+    usage = df[df.type == "usage"]
+    if not usage.empty:
+        usage_grp = usage.groupby(['customer_id', 'mode']) \
+                         .agg({'input_tokens':'sum','output_tokens':'sum'}) \
+                         .reset_index()
+        usage_grp['cost'] = usage_grp.input_tokens * 0.00000465 + usage_grp.output_tokens * 0.00001395
+        st.dataframe(usage_grp)
+        pivot = usage_grp.pivot(index='customer_id', columns='mode', values='cost').fillna(0)
+        st.bar_chart(pivot)
+    else:
+        st.info("Noch keine Usage-Daten.")
+
+    # 3) Trend- & Zeitreihen-Analysen
+    st.subheader("📈 Trend-Analysen")
+    tasks = df[df.type == "task_run"]
+    if not tasks.empty:
+        daily_tasks = tasks.set_index('timestamp').resample('D').size().rename('tasks')
+        st.line_chart(daily_tasks)
+    else:
+        st.info("Noch keine Task-Daten.")
+    if not usage.empty:
+        daily_usage = usage.set_index('timestamp').resample('D') \
+                           .sum()[['input_tokens','output_tokens']]
+        st.area_chart(daily_usage)
+    else:
+        st.info("Noch keine Usage-Daten für Trend.")
+
+    # 5) Aktivitätslog & CSV-Export
+    st.subheader("📝 Aktivitätslog")
+    if not df.empty:
+        st.dataframe(df)
+        csv = df.to_csv(index=False).encode('utf-8')
+        st.download_button("Export Log als CSV", data=csv, file_name="activity_log.csv", mime="text/csv")
+    else:
+        st.info("Noch keine Events geloggt.")
+
+    # 6) Qualitäts- & Feedback-Loop
+    st.subheader("🗣️ Feedback & Ratings")
+    feedback = df[df.type == "rating"]
+    if not feedback.empty:
+        st.dataframe(feedback[['customer_id','rating','comment','timestamp']])
+        words = Counter()
+        for c in feedback.comment.dropna():
+            for w in c.lower().split():
+                words[w] += 1
+        common = words.most_common(5)
+        st.write("Top 5 Feedback-Begriffe:", common)
+    else:
+        st.info("Noch kein Feedback vorhanden.")
+
+    # 7) Interactive Drill-Downs
+    st.subheader("🔍 Details pro Kunde")
+    for cid in customers:
+        with st.expander(f"Kunde {cid}"):
+            cust_tasks = tasks[tasks.customer_id == cid][['task','timestamp']]
+            st.write("Letzte Tasks", cust_tasks)
+            cust_usage = usage[usage.customer_id == cid][['mode','input_tokens','output_tokens','timestamp']]
+            st.write("Token Usage", cust_usage)
+            cust_fb = feedback[feedback.customer_id == cid][['rating','comment','timestamp']]
+            st.write("Feedback", cust_fb)
+            cust_log = df[df.customer_id == cid]
+            st.write("Rohes Log", cust_log)
+
+    st.stop()
+
+# ===============================
+# User-Tasks
+# ===============================
+st.title("👤 Kunden-Upload & KI-Agent")
+
 # Kundenprofil anlegen
-# -------------------------------
 customer_name = st.text_input("Name des neuen Kunden (z. B. Kosmetikstudio Müller)")
 url_input = st.text_input("Website-URL des Kunden")
 pdf_file = st.file_uploader("Optional: PDF-Datei mit Informationen zum Kunden", type=["pdf"])
@@ -45,19 +169,15 @@ if st.button("✅ Kundenprofil erstellen"):
         data = {"name": customer_name, "url": url_input, "pdf": pdf_text, "notes": notes}
         save_customer_data(identifier, data)
         st.success(f"Kundenprofil erfolgreich erstellt. ID: {identifier}")
-        st.info("Der Agent verwendet diese Daten ab sofort für Analysen, wenn du diesen Kunden auswählst.")
+        st.info("Der Agent verwendet diese Daten ab sofort für Analysen.")
 
-# ===============================
-# KI-Agent mit Deep vs. Fast Mode
-# ===============================
 st.markdown("---")
 st.header("🎯 Marketing-Tasks mit KI-Agent")
 
-# Mode-Auswahl
+# Mode- & Task-Auswahl
 mode_label = st.radio("Modus wählen:", ["⚡ Schnell", "🧠 Tiefenanalyse"], horizontal=True)
 mode = "fast" if mode_label == "⚡ Schnell" else "deep"
 
-# Task-Auswahl
 task = st.selectbox("Wähle eine Aufgabe:", [
     "–",
     "Content Briefing",
@@ -72,7 +192,7 @@ task = st.selectbox("Wähle eine Aufgabe:", [
     "Marketingmaßnahmen planen"
 ])
 
-# Reset, wenn Task oder Modus gewechselt
+# Reset Deep-Loop
 if task != st.session_state.last_task or mode != st.session_state.last_mode:
     st.session_state.conv_id = None
     st.session_state.questions = []
@@ -83,12 +203,7 @@ if task != st.session_state.last_task or mode != st.session_state.last_mode:
 # Kundenkontext laden
 customer_options = ["– Kein Kunde –"] + list_customer_ids()
 selected_customer = st.selectbox("🧠 Ordne Analyse optional einem Kunden zu:", customer_options)
-
-customer_memory = ""
-if selected_customer != "– Kein Kunde –":
-    customer_memory = load_customer_memory(selected_customer)
-    if customer_memory:
-        st.info("🧠 Kontext aus Kundengedächtnis wird verwendet.")
+customer_memory = load_customer_memory(selected_customer) if selected_customer != "– Kein Kunde –" else ""
 
 # Gemeinsame Inputs
 url = st.text_input("🌐 (Optional) Website-URL", placeholder="https://...")
@@ -107,127 +222,69 @@ briefing_typ = kanal = thema = zielgruppe = tonalitaet = ""
 if task == "Content-Vergleich":
     kunde = st.text_area("👤 Kundentext", height=200)
     mitbewerber = st.text_area("🏢 Mitbewerbertext", height=200)
-
 elif task == "Wettbewerbsanalyse (Webseiten)":
-    eigene_url = st.text_input("🌐 Deine Website-URL", placeholder="https://www.deineseite.de")
+    eigene_url = st.text_input("🌐 Deine Website-URL", placeholder="https://...")
     wettbewerber_urls = st.text_area("🏢 Wettbewerber-URLs (eine pro Zeile)", height=200)
-
 elif task == "Content Briefing":
     briefing_typ = st.radio("Briefing-Modus wählen:", ["Analyse", "Writing"])
     if briefing_typ == "Writing":
         zielgruppe = st.text_input("👥 Zielgruppe")
         tonalitaet = st.text_input("🎙️ Tonalität")
         thema = st.text_input("📝 Thema")
-
 elif task == "Kampagnenplanung":
     thema = st.text_input("📝 Thema der Kampagne")
     kanal = st.selectbox("📢 Kanal", ["LinkedIn", "Instagram", "Blog", "E-Mail", "Facebook", "Xing"])
 
-# -------------------------------
 # Initialer Agent-Call
-# -------------------------------
 if st.button("✅ Absenden"):
-    # Parameter für run_agent sammeln
     params = {"customer_id": selected_customer if selected_customer != "– Kein Kunde –" else None}
-
     if task == "Content Briefing":
         if briefing_typ == "Analyse":
-            params.update({
-                "text": customer_memory + "\n\n" + context,
-                "url": url,
-                "pdf_path": optional_pdf_path
-            })
+            params.update({"text": customer_memory + "\n\n" + context, "url": url, "pdf_path": optional_pdf_path})
             task_id = "briefing_analysis"
         else:
             if not (zielgruppe and tonalitaet and thema):
-                st.error("❗ Bitte Zielgruppe, Tonalität und Thema angeben.")
-                st.stop()
-            params.update({
-                "zielgruppe": zielgruppe,
-                "tonalitaet": tonalitaet,
-                "thema": thema
-            })
+                st.error("❗ Bitte Zielgruppe, Tonalität und Thema angeben."); st.stop()
+            params.update({"zielgruppe": zielgruppe, "tonalitaet": tonalitaet, "thema": thema})
             task_id = "briefing_write"
-
     elif task == "Content-Vergleich":
         if not (kunde and mitbewerber):
-            st.error("❗ Bitte beide Texte ausfüllen.")
-            st.stop()
+            st.error("❗ Bitte beide Texte ausfüllen."); st.stop()
         params.update({"text_kunde": kunde, "text_mitbewerber": mitbewerber})
         task_id = "vergleich"
-
     elif task == "Wettbewerbsanalyse (Webseiten)":
         if not (eigene_url and wettbewerber_urls.strip()):
-            st.error("❗ Bitte gib deine eigene Website und mindestens eine Wettbewerber-URL an.")
-            st.stop()
-        params.update({
-            "eigene_url": eigene_url,
-            "wettbewerber_urls": [u.strip() for u in wettbewerber_urls.splitlines() if u.strip()],
-            "pdf_path": optional_pdf_path
-        })
+            st.error("❗ Bitte eigene URL und Wettbewerber-URLs angeben."); st.stop()
+        params.update({"eigene_url": eigene_url,
+                       "wettbewerber_urls": [u.strip() for u in wettbewerber_urls.splitlines() if u.strip()],
+                       "pdf_path": optional_pdf_path})
         task_id = "vergleich"
-
     elif task == "SEO Audit":
-        params.update({
-            "text": customer_memory + "\n\n" + context,
-            "url": url,
-            "pdf_path": optional_pdf_path
-        })
+        params.update({"text": customer_memory + "\n\n" + context, "url": url, "pdf_path": optional_pdf_path})
         task_id = "seo_audit"
-
     elif task == "SEO Optimierung":
-        params.update({
-            "text": customer_memory + "\n\n" + context,
-            "url": url,
-            "audit_pdf_path": optional_pdf_path
-        })
+        params.update({"text": customer_memory + "\n\n" + context, "url": url, "audit_pdf_path": optional_pdf_path})
         task_id = "seo_optimize"
-
     elif task == "Technisches SEO (Lighthouse)":
         if not url:
-            st.error("❗ Bitte eine gültige URL angeben.")
-            st.stop()
-        params.update({"url": url})
-        task_id = "seo_lighthouse"
-
+            st.error("❗ Bitte gültige URL angeben."); st.stop()
+        params.update({"url": url}); task_id = "seo_lighthouse"
     elif task == "Kampagnenplanung":
-        params.update({
-            "text": customer_memory + "\n\n" + context,
-            "url": url,
-            "thema": thema,
-            "kanal": kanal,
-            "pdf_path": optional_pdf_path
-        })
+        params.update({"text": customer_memory + "\n\n" + context,
+                       "url": url, "thema": thema, "kanal": kanal, "pdf_path": optional_pdf_path})
         task_id = "campaign_plan"
-
     elif task == "Landingpage Strategie":
-        params.update({
-            "text": customer_memory + "\n\n" + context,
-            "url": url,
-            "pdf_path": optional_pdf_path
-        })
+        params.update({"text": customer_memory + "\n\n" + context, "url": url, "pdf_path": optional_pdf_path})
         task_id = "landingpage_strategy"
-
     elif task == "Monatsreport":
-        params.update({
-            "text": customer_memory + "\n\n" + context,
-            "url": url,
-            "audit_pdf_path": optional_pdf_path
-        })
+        params.update({"text": customer_memory + "\n\n" + context, "url": url, "audit_pdf_path": optional_pdf_path})
         task_id = "monthly_report"
-
     elif task == "Marketingmaßnahmen planen":
-        params.update({
-            "text": customer_memory + "\n\n" + context,
-            "url": url,
-            "audit_pdf_path": optional_pdf_path
-        })
+        params.update({"text": customer_memory + "\n\n" + context, "url": url, "audit_pdf_path": optional_pdf_path})
         task_id = "tactical_actions"
-
     else:
         st.stop()
 
-    # Agent-Call (ohne Klarstellungen)
     result = run_agent(
         task=task_id,
         reasoning_mode=mode,
@@ -239,53 +296,54 @@ if st.button("✅ Absenden"):
     st.session_state.questions = result["questions"]
     st.session_state.conv_id = result["conversation_id"]
 
-    # Klarfrage-Inputs vorbereiten
-    for i, _ in enumerate(st.session_state.questions):
+    log_event({"type": "task_run",
+               "customer_id": params.get("customer_id"),
+               "task": task_id,
+               "mode": mode})
+
+    for i in range(len(st.session_state.questions)):
         key = f"clar_{i}"
         if key not in st.session_state:
             st.session_state[key] = ""
 
-# -------------------------------
-# Rückfragen-Handling (Deep-Modus)
-# -------------------------------
+# Rückfragen-Handling (Deep)
 if mode == "deep" and st.session_state.questions:
     st.markdown("### 🤔 Rückfragen des Modells:")
     for i, q in enumerate(st.session_state.questions):
         st.text_input(label=q, key=f"clar_{i}")
-
     if st.button("📝 Rückfragen beantworten"):
-        clar_dict = {
-            q: st.session_state[f"clar_{i}"]
-            for i, q in enumerate(st.session_state.questions)
-        }
-        # Agenten-Call mit Klarstellungen
+        clar = {q: st.session_state[f"clar_{i}"] for i, q in enumerate(st.session_state.questions)}
         result = run_agent(
             task=task_id,
             reasoning_mode=mode,
             conversation_id=st.session_state.conv_id,
-            clarifications=clar_dict,
+            clarifications=clar,
             **params
         )
         st.session_state.response = result["response"]
         st.session_state.questions = result["questions"]
         st.session_state.conv_id = result["conversation_id"]
+        for i in range(len(st.session_state.questions)):
+            st.session_state[f"clar_{i}"] = ""
 
-        # Neue Klarfrage-Felder initialisieren
-        for i, _ in enumerate(st.session_state.questions):
-            key = f"clar_{i}"
-            st.session_state[key] = ""
-
-# -------------------------------
-# Endgültiges Ergebnis anzeigen
-# -------------------------------
+# Ergebnis & Feedback
 if not st.session_state.questions and st.session_state.response:
     st.subheader("📢 Ergebnis:")
     st.write(st.session_state.response)
-
-    rating = st.slider(
-        "Wie hilfreich war das Ergebnis? (1 = schlecht, 10 = exzellent)",
-        1, 10, 7
-    )
-    if selected_customer != "– Kein Kunde –" and rating >= 7:
-        save_customer_memory(selected_customer, st.session_state.response)
-        st.success("✅ Ergebnis im Kundengedächtnis gespeichert.")
+    rating = st.slider("Wie hilfreich war das Ergebnis? (1–10)", 1, 10, 7)
+    comment = st.text_area("Dein Feedback (optional)")
+    if st.button("✅ Feedback speichern"):
+        if selected_customer != "– Kein Kunde –":
+            log_event({
+                "type": "rating",
+                "customer_id": selected_customer,
+                "rating": rating,
+                "comment": comment
+            })
+            if rating >= 7:
+                save_customer_memory(selected_customer, st.session_state.response)
+                st.success("✅ Ergebnis im Kundengedächtnis gespeichert.")
+            else:
+                st.info("Feedback gespeichert.")
+        else:
+            st.error("Kein Kunde ausgewählt; Feedback nicht gespeichert.")

@@ -9,6 +9,7 @@ from qdrant_client import QdrantClient
 from langchain_openai import ChatOpenAI
 
 from agent.embedder import create_embedding
+from agent.activity_log import log_event  # neu
 
 # ===== Qdrant Client =====
 qdrant = QdrantClient(
@@ -16,8 +17,8 @@ qdrant = QdrantClient(
     api_key=os.getenv("QDRANT_API_KEY")
 )
 
-# ===== LangChain LLM =====
-llm = ChatOpenAI(model="gpt-4o")
+# ===== LangChain LLM mit erhöhtem Token-Limit =====
+llm = ChatOpenAI(model="gpt-4o", max_tokens=3000)
 
 # ===== System-Prompts für Fast vs. Deep =====
 FAST_SYSTEM_MESSAGE = (
@@ -48,54 +49,54 @@ def query_agent(
     """
     Fragt den Marketing-Analyse-Agenten an und unterstützt optional Deep Reasoning mit Rückfragen.
 
-    Args:
-        question: Nutzereingabe/Frage.
-        mode: 'fast' oder 'deep'.
-        clarifications: Antworten auf vorherige Rückfragen (falls vorhanden).
-        conversation_id: ID für die Gesprächssession (wird neu erzeugt, wenn None).
-        collection_name: Name der Qdrant-Collection.
-
     Returns:
-        Dict mit:
-        - response: die Agenten-Antwort (inkl. CoT, ohne Klarfragen)
-        - questions: Liste neuer Rückfragen (leere Liste, wenn keine oder fast-Modus)
-        - conversation_id: ID dieser Session
+        {
+            "response": str,
+            "questions": List[str],
+            "conversation_id": str
+        }
     """
-    # 1) Conversation-ID erzeugen oder verwenden
+    # 1) Conversation-ID
     if conversation_id is None:
         conversation_id = str(uuid.uuid4())
 
-    # 2) Embedding & Kontext aus Qdrant
+    # 2) Kontext aus Qdrant (limit=8 für mehr Chunks)
     embedding = create_embedding(question)
     results = qdrant.query_points(
         collection_name=collection_name,
         query_vector=embedding,
-        limit=3
+        limit=8
     )
     context = "\n---\n".join(hit.payload["text"] for hit in results)
 
-    # 3) System-Message auswählen
+    # 3) System-Message
     system_content = FAST_SYSTEM_MESSAGE if mode == "fast" else DEEP_SYSTEM_MESSAGE
 
-    # 4) Initiale Nachrichten
+    # 4) Chat-Messages bauen
     messages = [
         {"role": "system", "content": system_content},
         {"role": "user", "content": f"Kontext:\n{context}\n\nFrage: {question}"}
     ]
-
-    # 5) Vorherige Klarstellungen hinzufügen (nur im Deep-Modus)
     if mode == "deep" and clarifications:
         clar_text = "\n".join(f"Frage: {q}\nAntwort: {a}" for q, a in clarifications.items())
         messages.append({"role": "user", "content": f"Klarstellungen:\n{clar_text}"})
 
-    # 6) LLM-Aufruf
+    # 5) LLM-Aufruf
     resp = llm.invoke(messages)
     resp_content = resp.content
 
-    # 7) Falls Deep-Modus: Rückfragen extrahieren
+    # 6) Usage-Logging
+    log_event({
+        "type": "usage",
+        "conversation_id": conversation_id,
+        "mode": mode,
+        "input_tokens": resp.usage.prompt_tokens,
+        "output_tokens": resp.usage.completion_tokens
+    })
+
+    # 7) Rückfragen extrahieren (nur deep)
     questions = extract_questions_from_response(resp_content) if mode == "deep" else []
 
-    # 8) Rückgabe
     return {
         "response": resp_content,
         "questions": questions,
