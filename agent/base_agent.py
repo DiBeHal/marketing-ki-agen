@@ -144,21 +144,31 @@ def run_agent(
             )
             prompt = tmpl.format(context_kunde=ck, context_mitbewerber=cm)
 
-    elif task == "seo_audit":
+        elif task == "seo_audit":
+        # 1) Kontext und technische SEO-Signale laden
         ctx = get_context_from_text_or_url(
-            kwargs.get("text", ""), kwargs.get("url", ""), kwargs.get("customer_id")
+            kwargs.get("text", ""),
+            kwargs.get("url", ""),
+            kwargs.get("customer_id")
         )
         signals = extract_seo_signals(kwargs.get("url", ""))
-        try:
-            lh = run_lighthouse(kwargs.get("url", "")) or {}
-            seo_score = lh.get("categories", {}).get("seo", {})
-        except EnvironmentError as e:
-            seo_score = {"warnung": str(e)}
+
+        # 2) Lighthouse-Report (run_lighthouse fängt Fehler intern ab und liefert {} zurück)
+        raw_lh = run_lighthouse(kwargs.get("url", ""))
+        if isinstance(raw_lh, dict):
+            seo_score = raw_lh.get("categories", {}).get("seo", {})
+        else:
+            seo_score = {}
+
+        # 3) Kombinierten Prompt-Kontext bauen
         combined = (
             f"TEXT-INHALT:\n{ctx}\n\n"
             f"TECHNIK:\n{json.dumps(signals, indent=2)}\n\n"
-            f"LIGHTHOUSE:\n{json.dumps(seo_score, indent=2)}"
+            f"LIGHTHOUSE:\n"
+            f"{json.dumps(seo_score, indent=2) if seo_score else '(Keine Lighthouse-Daten verfügbar)'}"
         )
+
+        # 4) Prompt auswählen und formatieren
         tmpl = seo_audit_prompt_fast if reasoning_mode == "fast" else seo_audit_prompt_deep
         prompt = tmpl.format(context=combined)
 
@@ -189,21 +199,34 @@ def run_agent(
         )
         prompt = tmpl.format(context=ctx)
 
-    elif task == "seo_lighthouse":
-        url = kwargs.get("url")
+        elif task == "seo_lighthouse":
+        # 1) URL validieren
+        url = kwargs.get("url", "")
         if not url:
             raise ValueError("URL für Lighthouse-Analyse fehlt.")
-        try:
-            report = run_lighthouse(url)
-            seo_data = json.dumps(report["categories"]["seo"], indent=2)
-        except EnvironmentError as e:
-            seo_data = json.dumps({"warnung": str(e)}, indent=2)
+
+        # 2) Lighthouse-Report holen (run_lighthouse fängt interne Fehler ab)
+        raw_lh = run_lighthouse(url)
+        if isinstance(raw_lh, dict):
+            seo_data = raw_lh.get("categories", {}).get("seo", {})
+        else:
+            seo_data = {}
+
+        # 3) Fallback-Text, falls keine Daten vorliegen
+        seo_data_str = (
+            json.dumps(seo_data, indent=2)
+            if seo_data
+            else "(Keine Lighthouse-Daten verfügbar)"
+        )
+
+        # 4) Prompt-Auswahl und Formatieren
         tmpl = (
             seo_lighthouse_prompt_fast
             if reasoning_mode == "fast"
             else seo_lighthouse_prompt_deep
         )
-        prompt = tmpl.format(context=seo_data)
+        prompt = tmpl.format(context=seo_data_str)
+
 
     elif task == "landingpage_strategy":
         text = kwargs.get("text", ""); url = kwargs.get("url", ""); pdfp = kwargs.get("pdf_path", "")
