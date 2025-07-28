@@ -477,7 +477,6 @@ if st.button("🚀 Analyse starten") and task != "–":
     # Agent ausführen
     with st.spinner("🧠 Der Agent denkt nach…"):
         result = run_agent(
-            task=task_id,
             reasoning_mode=mode,
             conversation_id=st.session_state.conv_id,
             clarifications=clar,
