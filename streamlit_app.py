@@ -435,8 +435,6 @@ if st.button("🚀 Analyse starten") and task != "–":
             clarifications=clar,
             **params
         )
-
-        )
         st.session_state.response = result["response"]
         st.session_state.questions = result.get("questions", [])
         st.session_state.conv_id = result.get("conversation_id")
