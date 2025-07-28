@@ -434,71 +434,115 @@ if show_sources:
 # -------------------------------
 # Initialer Agent-Call
 # -------------------------------
-if st.button("🚀 Analyse starten") and task != "–":
-    clar = {}  # Initialisiere Rückfragen-Parameter
+clar = {}  # Initialisiere Rückfragen-Parameter
 
-    # Optional: Automatische Themenextraktion vorschalten
-    if params.get("use_auto_sources"):
-        st.info("🤖 Der Agent extrahiert automatisch relevante Themen für externe Datenquellen…")
+# Optional: Automatische Themenextraktion vorschalten
+if params.get("use_auto_sources") and not st.session_state.get("themen_bestaetigt"):
+    st.info("🤖 Der Agent extrahiert automatisch relevante Themen für externe Datenquellen…")
 
-        theme_text = " ".join([
-            params.get("thema", ""),
-            params.get("zielgruppe", ""),
-            params.get("text", ""),
-            customer_memory
-        ])
+    theme_text = " ".join([
+        params.get("thema", ""),
+        params.get("zielgruppe", ""),
+        params.get("text", ""),
+        customer_memory
+    ])
 
-        extract_result = run_agent(
-            task="extract_topics",
-            reasoning_mode=mode,
-            conversation_id=None,
-            clarifications={},
-            text=theme_text
-        )
+    extract_result = run_agent(
+        task="extract_topics",
+        reasoning_mode=mode,
+        conversation_id=None,
+        clarifications={},
+        text=theme_text
+    )
 
-        suggested_topics_raw = extract_result["response"]
-        proposed_topics = [line.strip("• ").strip() for line in suggested_topics_raw.splitlines() if line.strip()]
-        st.session_state.auto_topics = proposed_topics
+    suggested_topics_raw = extract_result["response"]
+    proposed_topics = [line.strip("• ").strip() for line in suggested_topics_raw.splitlines() if line.strip()]
+    st.session_state.auto_topics = proposed_topics
 
-        st.markdown("### 🧠 Themenvorschlag des Agenten:")
-        for i, t in enumerate(proposed_topics, 1):
-            st.markdown(f"{i}. {t}")
+    st.markdown("### 🧠 Themenvorschlag des Agenten:")
+    for i, t in enumerate(proposed_topics, 1):
+        st.markdown(f"{i}. {t}")
 
-        st.markdown("#### 📌 Themen übernehmen?")
-        confirm = st.radio("Möchtest du die vorgeschlagenen Themen verwenden?", ["✅ Ja", "✍️ Nein, manuell anpassen"], key="confirm_topics")
+    st.markdown("#### 📌 Themen übernehmen?")
+    confirm = st.radio("Möchtest du die vorgeschlagenen Themen verwenden?", ["✅ Ja", "✍️ Nein, manuell anpassen"], key="confirm_topics")
 
-        proceed = st.button("✅ Themen übernehmen und starten")
-
-        if confirm == "Nein, manuell anpassen" or not proceed:
+    if confirm == "✍️ Nein, manuell anpassen":
+        manual_topics = st.text_area("✏️ Bitte gib deine eigenen Themen ein (ein Thema pro Zeile)")
+        if not manual_topics:
+            st.warning("Bitte gib mindestens ein Thema an.")
             st.stop()
         else:
-            params["topic_keywords"] = suggested_topics
+            user_topics = [line.strip() for line in manual_topics.splitlines() if line.strip()]
+            params["topic_keywords"] = user_topics
+    else:
+        params["topic_keywords"] = proposed_topics
 
-    # Agent ausführen
-    with st.spinner("🧠 Der Agent denkt nach…"):
-        result = run_agent(
-            reasoning_mode=mode,
-            conversation_id=st.session_state.conv_id,
-            clarifications=clar,
-            **params
-        )
+# Jetzt finaler Start
+    if st.button("✅ Themen übernehmen und starten", key="trigger_analysis"):
+        st.session_state.themen_bestaetigt = True
+        st.experimental_rerun()
 
-        st.session_state.response = result["response"]
-        st.session_state.questions = result.get("questions", [])
-        st.session_state.conv_id = result.get("conversation_id")
+# Agent ausführen (nur wenn Themen bestätigt oder Auto-Modus deaktiviert)
+if (not params.get("use_auto_sources")) or st.session_state.get("themen_bestaetigt"):
+    if st.button("🚀 Analyse starten") and task != "–":
+        with st.spinner("🧠 Der Agent denkt nach…"):
+            result = run_agent(
+                task=task_id,
+                reasoning_mode=mode,
+                conversation_id=st.session_state.conv_id,
+                clarifications=clar,
+                **params
+            )
 
-    log_event({
-        "type": "task_run",
-        "customer_id": params.get("customer_id"),
-        "task": task_id,
-        "mode": mode
-    })
+            st.session_state.response = result["response"]
+            st.session_state.questions = result.get("questions", [])
+            st.session_state.conv_id = result.get("conversation_id")
+            st.session_state.themen_bestaetigt = False  # zurücksetzen
 
-    # Initialisiere Rückfragen-Felder
-    for i in range(len(st.session_state.questions)):
-        key = f"clar_{i}"
-        if key not in st.session_state:
-            st.session_state[key] = ""
+        log_event({
+            "type": "task_run",
+            "customer_id": params.get("customer_id"),
+            "task": task_id,
+            "mode": mode
+        })
+
+        # Initialisiere Rückfragen-Felder
+        for i in range(len(st.session_state.questions)):
+            key = f"clar_{i}"
+            if key not in st.session_state:
+                st.session_state[key] = ""
+
+# -------------------------------
+# Rückfragen-Loop (Deep-Modus)
+# -------------------------------
+while st.session_state.questions:
+    st.markdown("### 🤔 Rückfragen des Agenten (Deep-Modus):")
+    clarifications = {}
+
+    for i, question in enumerate(st.session_state.questions):
+        clarifications[question] = st.text_input(f"🔁 Rückfrage {i+1}: {question}", key=f"clar_{i}")
+
+    if st.button("📝 Rückfragen beantworten"):
+        with st.spinner("🔄 Rückfragen werden verarbeitet…"):
+            try:
+                follow_up_result = run_agent(
+                    task=task_id,
+                    reasoning_mode=mode,
+                    conversation_id=st.session_state.conv_id,
+                    clarifications=clarifications,
+                    **params
+                )
+
+                st.session_state.response = follow_up_result["response"]
+                st.session_state.questions = follow_up_result.get("questions", [])
+                st.session_state.conv_id = follow_up_result.get("conversation_id")
+
+            except Exception as e:
+                st.error(f"Fehler bei der Rückfragenverarbeitung: {e}")
+            st.experimental_rerun()
+    else:
+        st.stop()
+
 
 # -------------------------------
 # Endgültiges Ergebnis anzeigen
@@ -508,7 +552,7 @@ if not st.session_state.questions and st.session_state.response:
     st.write(st.session_state.response)
 
     rating = st.slider("Wie hilfreich war das Ergebnis? (1–10)", 1, 10, 7)
-    comment = st.text_area("Dein Feedback (optional)")
+    comment = st.text_area("📝 Dein Feedback (optional)")
     if st.button("✅ Feedback speichern"):
         if selected_customer != "– Kein Kunde –":
             log_event({
@@ -521,9 +565,9 @@ if not st.session_state.questions and st.session_state.response:
                 save_customer_memory(selected_customer, st.session_state.response)
                 st.success("✅ Ergebnis im Kundengedächtnis gespeichert.")
             else:
-                st.info("Feedback gespeichert.")
+                st.info("📩 Feedback gespeichert.")
         else:
-            st.error("Kein Kunde ausgewählt; Feedback nicht gespeichert.")
+            st.error("❗ Kein Kunde ausgewählt – Feedback wurde nicht gespeichert.")
 
 # -------------------------------
 # Rückfrage-Dialog (manuell)
@@ -534,15 +578,19 @@ if st.session_state.response:
 
     if follow_up:
         with st.spinner("⏳ Agent denkt über die Rückfrage nach…"):
-            follow_up_result = run_agent(
-                reasoning_mode=mode,
-                conversation_id=st.session_state.conv_id,
-                follow_up=follow_up,
-                is_follow_up=True,
-                **params
-            )
+            try:
+                follow_up_result = run_agent(
+                    task=task_id,
+                    reasoning_mode=mode,
+                    conversation_id=st.session_state.conv_id,
+                    follow_up=follow_up,
+                    is_follow_up=True,
+                    **params
+                )
 
-            st.session_state.response += "\n\n**Antwort:**\n" + follow_up_result["response"]
-            st.session_state.questions.append(follow_up)
-            st.markdown(follow_up_result["response"])
+                st.session_state.response += "\n\n**Antwort auf Rückfrage:**\n" + follow_up_result["response"]
+                st.session_state.questions.append(follow_up)
+                st.markdown(follow_up_result["response"])
 
+            except Exception as e:
+                st.error(f"❌ Fehler bei der Rückfrage: {e}")
