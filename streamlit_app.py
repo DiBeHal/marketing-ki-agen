@@ -223,7 +223,7 @@ context = st.text_area("📄 Optionaler Kontext/Text", height=200)
 optional_pdf = st.file_uploader("📥 Optional: Kontext-PDF hochladen", type=["pdf"])
 optional_pdf_path = None
 if optional_pdf:
-    optional_pdf_path = \"optional_context.pdf\"
+    optional_pdf_path = "optional_context.pdf"
     with open(optional_pdf_path, \"wb\") as f:
         f.write(optional_pdf.read())
 
