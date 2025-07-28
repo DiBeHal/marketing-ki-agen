@@ -394,47 +394,89 @@ elif task == "Marketingmaßnahmen planen":
     if optional_pdf_path:
         params["pdf_path"] = optional_pdf_path
 
-# -------------------------------  
-# Externe Datenquellen (optional bei bestimmten Tasks)  
 # -------------------------------
-st.markdown("---")
-st.subheader("🌐 Optional: Externe Datenquellen für Content & Analyse")
-
-rss_input      = st.text_area("📡 RSS-Feed URLs (eine pro Zeile)", height=100)
-trend_input    = st.text_input("📈 Google Trends Keywords (kommagetrennt)")
-destatis_input = st.text_input("📊 DESTATIS/Eurostat-Suchbegriffe (kommagetrennt)")
-
-# -------------------------------  
-# Zusätzliche Datenquellen in params aufnehmen  
+# Externe Datenquellen (automatisch vs. manuell)
 # -------------------------------
-rss_feeds_list = [u.strip() for u in rss_input.splitlines() if u.strip()]
-trend_keywords_list = [k.strip() for k in trend_input.split(",") if k.strip()]
-destatis_queries_list = [d.strip() for d in destatis_input.split(",") if d.strip()]
 
-if mode == "deep" or (task == "Content Writing" and mode == "fast"):
-    params["rss_feeds"] = rss_feeds_list
-    params["trend_keywords"] = trend_keywords_list
+show_sources = (
+    mode == "deep" or (mode == "fast" and task == "Content Writing")
+)
+use_sources = False
+rss_input = trend_input = destatis_input = ""
 
-if mode == "deep" and task in [
-    "Content Analyse", "Content Writing", "Kampagnenplanung",
-    "Landingpage Strategie", "SEO Optimierung", "Monatsreport",
-    "Marketingmaßnahmen planen", "Wettbewerbsanalyse"
-]:
-    params["destatis_queries"] = destatis_queries_list
+if show_sources:
+    st.markdown("---")
+    st.subheader("🌐 Themenbasierte externe Datenquellen")
+    use_sources = st.checkbox("🔍 Automatische Themenvorschläge verwenden?", value=True)
+
+    if not use_sources:
+        rss_input = st.text_area("📡 RSS-Feed URLs (eine pro Zeile)", height=100)
+        trend_input = st.text_input("📈 Google Trends Keywords (kommagetrennt)")
+        destatis_input = st.text_input("📊 DESTATIS/Eurostat-Suchbegriffe (kommagetrennt)")
+
+        rss_feeds_list = [u.strip() for u in rss_input.splitlines() if u.strip()]
+        trend_keywords_list = [k.strip() for k in trend_input.split(",") if k.strip()]
+        destatis_queries_list = [d.strip() for d in destatis_input.split(",") if d.strip()]
+
+        if rss_feeds_list:
+            params["rss_feeds"] = rss_feeds_list
+        if trend_keywords_list:
+            params["trend_keywords"] = trend_keywords_list
+        if destatis_queries_list and task in [
+            "Content Analyse", "Content Writing", "Kampagnenplanung",
+            "Landingpage Strategie", "SEO Optimierung", "Monatsreport",
+            "Marketingmaßnahmen planen", "Wettbewerbsanalyse"
+        ]:
+            params["destatis_queries"] = destatis_queries_list
+    else:
+        params["use_auto_sources"] = True
 
 # -------------------------------  
 # Initialer Agent-Call  
 # -------------------------------
 if st.button("🚀 Analyse starten") and task != "–":
-    clar = {}  # Leerer Rückfragen-Dummy
+    clar = {}  # Initialisiere Rückfragen-Parameter
 
-    with st.spinner("Der Agent denkt nach…"):
+    # Optional: Automatische Themenextraktion vorschalten
+    if params.get("use_auto_sources"):
+        st.info("🤖 Der Agent extrahiert automatisch relevante Themen für externe Datenquellen…")
+
+        theme_text = " ".join([
+            params.get("thema", ""),
+            params.get("zielgruppe", ""),
+            params.get("text", ""),
+            customer_memory
+        ])
+        extract_result = run_agent(
+            task="extract_topics",
+            reasoning_mode=mode,
+            conversation_id=None,
+            clarifications={},
+            text=theme_text
+        )
+
+        suggested_topics = extract_result["response"]
+        st.session_state.auto_topics = suggested_topics
+
+        st.markdown("### 🧠 Themenvorschlag des Agenten:")
+        st.markdown(suggested_topics)
+
+        confirm = st.radio("✅ Themen übernehmen?", ["Ja", "Nein, manuell anpassen"], key="confirm_topics")
+
+        if confirm == "Nein, manuell anpassen":
+            st.warning("🔧 Bitte gib deine Themen manuell oben ein und deaktiviere die Checkbox.")
+            st.stop()
+        else:
+            params["topic_keywords"] = suggested_topics
+
+    with st.spinner("🧠 Der Agent denkt nach…"):
         result = run_agent(
             reasoning_mode=mode,
             conversation_id=st.session_state.conv_id,
             clarifications=clar,
             **params
         )
+
         st.session_state.response = result["response"]
         st.session_state.questions = result.get("questions", [])
         st.session_state.conv_id = result.get("conversation_id")

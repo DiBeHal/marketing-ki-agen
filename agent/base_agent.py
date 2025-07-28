@@ -117,6 +117,31 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
         trends_insights = fetch_trends_insights(kwargs.get("trend_keywords", []))
         destatis_stats = fetch_destatis_stats(kwargs.get("destatis_queries", []))
 
+    # Fallback: Automatische Quellen basierend auf erkannter Themenliste
+    rss_snippets = kwargs.get("rss_snippets", [])
+    trends_insights = kwargs.get("trends_insights", [])
+    destatis_stats = kwargs.get("destatis_stats", [])
+    google_ads = kwargs.get("google_ads", [])
+    facebook_ads = kwargs.get("facebook_ads", [])
+    linkedin_ads = kwargs.get("linkedin_ads", [])
+
+    keywords = kwargs.get("topic_keywords", [])
+    if isinstance(keywords, str):
+        keywords = [k.strip() for k in keywords.split(",") if k.strip()]
+    elif isinstance(keywords, list):
+        keywords = [k.strip() for k in keywords if isinstance(k, str) and k.strip()]
+    else:
+        keywords = []
+
+    if keywords:
+        if not rss_snippets:
+            rss_snippets = fetch_rss_snippets(keywords)
+        if not trends_insights:
+            trends_insights = fetch_google_trends(keywords)
+        if not destatis_stats:
+            destatis_stats = fetch_destatis_snippets(keywords)
+
+
     if task == "content_analysis":
         ctx = get_context_from_text_or_url(kwargs.get("text", ""), kwargs.get("url", ""), kwargs.get("customer_id"))
         tmpl = content_analysis_prompt_fast if reasoning_mode == "fast" else content_analysis_prompt_deep
@@ -294,6 +319,18 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
                 else tactical_actions_prompt_deep)
         prompt = tmpl.format(context=ctx)
 
+    elif task == "extract_topics":
+        # Für automatische Themenvorschläge (RSS/Trends/DESTATIS)
+        txt = kwargs.get("text", "")
+        if not txt:
+            raise ValueError("Text zur Themenextraktion fehlt.")
+        prompt = f"""
+Extrahiere maximal 5 relevante, aktuelle Themen oder Begriffe aus folgendem Inputtext. 
+Diese sollen sich für weitere Recherche in Google Trends, RSS-News oder DESTATIS eignen.
+
+Text:
+{txt}
+"""
     else:
         raise ValueError(f"Unbekannter Task: {task}")
 
