@@ -467,12 +467,12 @@ if st.button("🚀 Analyse starten") and task != "–":
         st.markdown("#### 📌 Themen übernehmen?")
         confirm = st.radio("Möchtest du die vorgeschlagenen Themen verwenden?", ["✅ Ja", "✍️ Nein, manuell anpassen"], key="confirm_topics")
 
-        if confirm == "✍️ Nein, manuell anpassen":
-            st.warning("🔧 Bitte gib deine Themen manuell oben ein und deaktiviere die Checkbox.")
+        proceed = st.button("✅ Themen übernehmen und starten")
+
+        if confirm == "Nein, manuell anpassen" or not proceed:
             st.stop()
         else:
-            selected_topics = proposed_topics
-            params["topic_keywords"] = selected_topics
+            params["topic_keywords"] = suggested_topics
 
     # Agent ausführen
     with st.spinner("🧠 Der Agent denkt nach…"):
@@ -535,7 +535,6 @@ if st.session_state.response:
     if follow_up:
         with st.spinner("⏳ Agent denkt über die Rückfrage nach…"):
             follow_up_result = run_agent(
-                task=task_id,
                 reasoning_mode=mode,
                 conversation_id=st.session_state.conv_id,
                 follow_up=follow_up,
