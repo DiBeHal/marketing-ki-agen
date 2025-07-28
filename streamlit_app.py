@@ -462,11 +462,13 @@ if st.session_state.response:
     if follow_up:
         with st.spinner("⏳ Agent denkt über die Rückfrage nach…"):
             follow_up_result = run_agent(
+                task=task_id,
                 reasoning_mode=mode,
                 customer_id=customer_id,
                 conversation_id=st.session_state.conv_id,
                 follow_up=follow_up
             )
+
             st.session_state.response += "\\n\\n**Antwort:**\\n" + follow_up_result["response"]
             st.session_state.questions.append(follow_up)
             st.markdown(follow_up_result["response"])
