@@ -1,4 +1,7 @@
 # agent/base_agent.py
+from agent.services.trends import fetch_trends_insights
+from agent.services.rss import fetch_rss_snippets
+from agent.services.destatis import fetch_destatis_stats
 
 import os
 import uuid
@@ -135,11 +138,11 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
 
     if keywords:
         if not rss_snippets:
-            rss_snippets = fetch_rss_snippets(keywords)
+            rss_snippets = fetch_rss_snippets([f"https://news.google.com/rss/search?q={kw}" for kw in keywords])
         if not trends_insights:
-            trends_insights = fetch_google_trends(keywords)
+            trends_insights = fetch_trends_insights(keywords)
         if not destatis_stats:
-            destatis_stats = fetch_destatis_snippets(keywords)
+            destatis_stats = fetch_destatis_stats(keywords)
 
 
     if task == "content_analysis":
