@@ -224,7 +224,7 @@ optional_pdf = st.file_uploader("📥 Optional: Kontext-PDF hochladen", type=["p
 optional_pdf_path = None
 if optional_pdf:
     optional_pdf_path = "optional_context.pdf"
-    with open(optional_pdf_path, \"wb\") as f:
+    with open(optional_pdf_path, "wb") as f:
         f.write(optional_pdf.read())
 
 # Task-spezifische Inputs
