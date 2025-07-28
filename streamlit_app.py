@@ -191,9 +191,9 @@ mode = "fast" if mode_label == "⚡ Schnell" else "deep"
 
 task = st.selectbox("Wähle eine Aufgabe:", [
     "–",
-    "Content Briefing",
-    "Content-Vergleich",
-    "Wettbewerbsanalyse (Webseiten)",
+    "Content Analyse",
+    "Content Writing",
+    "Wettbewerbsanalyse",
     "SEO Audit",
     "SEO Optimierung",
     "Technisches SEO (Lighthouse)",
@@ -203,160 +203,232 @@ task = st.selectbox("Wähle eine Aufgabe:", [
     "Marketingmaßnahmen planen"
 ])
 
-# Reset Deep-Loop
+# Reset bei Task- oder Modus-Wechsel
 if task != st.session_state.last_task or mode != st.session_state.last_mode:
-    st.session_state.conv_id    = None
-    st.session_state.questions  = []
-    st.session_state.response   = ""
-    st.session_state.last_task  = task
-    st.session_state.last_mode  = mode
+    st.session_state.conv_id = None
+    st.session_state.questions = []
+    st.session_state.response = ""
+    st.session_state.last_task = task
+    st.session_state.last_mode = mode
 
-# Kundenkontext laden
-customer_options  = ["– Kein Kunde –"] + list_customer_ids()
+# Kundenkontext
+customer_options = ["– Kein Kunde –"] + list_customer_ids()
 selected_customer = st.selectbox("🧠 Ordne Analyse optional einem Kunden zu:", customer_options)
-customer_memory   = load_customer_memory(selected_customer) if selected_customer != "– Kein Kunde –" else ""
+customer_id = selected_customer if selected_customer != "– Kein Kunde –" else None
+customer_memory = load_customer_memory(customer_id) if customer_id else ""
 
 # Gemeinsame Inputs
-url               = st.text_input("🌐 (Optional) Website-URL", placeholder="https://…")
-context           = st.text_area("📄 Optionaler Kontext/Text", height=200)
-optional_pdf      = st.file_uploader("📥 Optional: Kontext-PDF hochladen", type=["pdf"])
+url = st.text_input("🌐 (Optional) Website-URL", placeholder="https://…")
+context = st.text_area("📄 Optionaler Kontext/Text", height=200)
+optional_pdf = st.file_uploader("📥 Optional: Kontext-PDF hochladen", type=["pdf"])
 optional_pdf_path = None
 if optional_pdf:
-    optional_pdf_path = "optional_context.pdf"
-    with open(optional_pdf_path, "wb") as f:
+    optional_pdf_path = \"optional_context.pdf\"
+    with open(optional_pdf_path, \"wb\") as f:
         f.write(optional_pdf.read())
 
 # Task-spezifische Inputs
 kunde = mitbewerber = eigene_url = wettbewerber_urls = None
 briefing_typ = kanal = thema = zielgruppe = tonalitaet = ""
 
-if task == "Content-Vergleich":
-    kunde       = st.text_area("👤 Kundentext", height=200)
-    mitbewerber = st.text_area("🏢 Mitbewerbertext", height=200)
+if task == "Content Analyse":
+    task_id = "content_analysis"
+    if not (context or url):
+        st.error("❗ Bitte Kontexttext oder URL angeben.")
+        st.stop()
+    params = {
+        "task": task_id,
+        "text": customer_memory + "\n\n" + context,
+        "url": url,
+        "customer_id": customer_id
+    }
+    if optional_pdf_path:
+        params["pdf_path"] = optional_pdf_path
 
-elif task == "Wettbewerbsanalyse (Webseiten)":
-    eigene_url        = st.text_input("🌐 Deine Website-URL", placeholder="https://…")
-    wettbewerber_urls = st.text_area("🏢 Wettbewerber-URLs (eine pro Zeile)", height=200)
+elif task == "Content Writing":
+    task_id = "content_writing"
+    zielgruppe = st.text_input("👥 Zielgruppe")
+    tonalitaet = st.text_input("🎙️ Tonalität")
+    thema = st.text_input("📝 Thema")
+    if not (zielgruppe and tonalitaet and thema):
+        st.error("❗ Bitte Zielgruppe, Tonalität und Thema angeben.")
+        st.stop()
+    params = {
+        "task": task_id,
+        "zielgruppe": zielgruppe,
+        "tonalitaet": tonalitaet,
+        "thema": thema,
+        "text": customer_memory + "\n\n" + context,
+        "customer_id": customer_id
+    }
+    if optional_pdf_path:
+        params["pdf_path"] = optional_pdf_path
 
-elif task == "Content Briefing":
-    briefing_typ = st.radio("Briefing-Modus wählen:", ["Analyse", "Writing"])
-    if briefing_typ == "Writing":
-        zielgruppe = st.text_input("👥 Zielgruppe")
-        tonalitaet = st.text_input("🎙️ Tonalität")
-        thema      = st.text_input("📝 Thema")
+elif task == "Wettbewerbsanalyse":
+    task_id = "competitive_analysis"
+    eigene_url = st.text_input("🌐 Eigene Website")
+    wettbewerber = st.text_area("🏢 Wettbewerber-URLs (eine pro Zeile)", height=200)
+    wettbewerber_urls = [url.strip() for url in wettbewerber.split("\n") if url.strip()]
+    if not (eigene_url and wettbewerber_urls):
+        st.error("❗ Bitte eigene URL und Wettbewerber-URLs angeben.")
+        st.stop()
+
+    st.subheader("📊 Optional: Werbebibliotheken einbeziehen")
+    facebook = st.checkbox("📘 Facebook Ads Library einbeziehen?")
+    google = st.checkbox("🔍 Google Ads Transparency Center einbeziehen?")
+    linkedin = st.checkbox("💼 LinkedIn Ads Library einbeziehen?")
+
+    ads_themen_input = st.text_input("🔎 Themen/Produkte für Werbeanalyse (kommagetrennt)")
+    ads_themen_liste = [k.strip() for k in ads_themen_input.split(",") if k.strip()]
+    unternehmen = st.text_input("🏷️ Unternehmensname (für Ad-Suche)")
+
+    params = {
+        "task": task_id,
+        "eigene_url": eigene_url,
+        "wettbewerber_urls": wettbewerber_urls,
+        "customer_id": customer_id,
+        "ads_keywords": ads_themen_liste,
+        "text": customer_memory + "\n\n" + context,
+        "customer_name": unternehmen
+    }
+    if facebook:
+        params["facebook_company"] = unternehmen
+    if google:
+        params["google_company"] = unternehmen
+    if linkedin:
+        params["linkedin_company"] = unternehmen
+    if optional_pdf_path:
+        params["pdf_path"] = optional_pdf_path
+
+elif task == "SEO Audit":
+    task_id = "seo_audit"
+    params = {
+        "task": task_id,
+        "url": url,
+        "text": customer_memory + "\n\n" + context,
+        "customer_id": customer_id
+    }
+    if optional_pdf_path:
+        params["pdf_path"] = optional_pdf_path
+
+elif task == "SEO Optimierung":
+    task_id = "seo_optimization"
+    params = {
+        "task": task_id,
+        "text": customer_memory + "\n\n" + context,
+        "customer_id": customer_id
+    }
+    if optional_pdf_path:
+        params["pdf_path"] = optional_pdf_path
+
+elif task == "Technisches SEO (Lighthouse)":
+    task_id = "seo_lighthouse"
+    if not url:
+        st.error("❗ Verpflichtende URL angeben.")
+        st.stop()
+    params = {
+        "task": task_id,
+        "url": url,
+        "customer_id": customer_id
+    }
+    if optional_pdf_path:
+        params["pdf_path"] = optional_pdf_path
 
 elif task == "Kampagnenplanung":
-    thema = st.text_input("📝 Thema der Kampagne")
-    kanal = st.selectbox("📢 Kanal", ["LinkedIn", "Instagram", "Blog", "E-Mail", "Facebook", "Xing"])
+    task_id = "campaign_plan"
+    ziel = st.text_input("🎯 Kampagnenziel")
+    produkt = st.text_input("📦 Produkt/Dienstleistung")
+    zeitraum = st.text_input("🕒 Zeitraum")
+    params = {
+        "task": task_id,
+        "ziel": ziel,
+        "produkt": produkt,
+        "zeitraum": zeitraum,
+        "text": customer_memory + "\n\n" + context,
+        "customer_id": customer_id
+    }
+    if optional_pdf_path:
+        params["pdf_path"] = optional_pdf_path
+
+elif task == "Landingpage Strategie":
+    task_id = "landingpage_strategy"
+    if not url:
+        st.error("❗ Verpflichtende URL angeben.")
+        st.stop()
+    zielgruppe = st.text_input("👥 Zielgruppe")
+    angebot = st.text_input("💡 Angebot")
+    params = {
+        "task": task_id,
+        "zielgruppe": zielgruppe,
+        "angebot": angebot,
+        "url": url,
+        "text": customer_memory + "\n\n" + context,
+        "customer_id": customer_id
+    }
+    if optional_pdf_path:
+        params["pdf_path"] = optional_pdf_path
+
+elif task == "Monatsreport":
+    task_id = "monthly_report"
+    monat = st.text_input("📆 Monat (z. B. 2024-07)")
+    params = {
+        "task": task_id,
+        "monat": monat,
+        "text": customer_memory + "\n\n" + context,
+        "customer_id": customer_id
+    }
+    if optional_pdf_path:
+        params["pdf_path"] = optional_pdf_path
+
+elif task == "Marketingmaßnahmen planen":
+    task_id = "tactical_actions"
+    ziel = st.text_input("🎯 Ziel")
+    zeitfenster = st.text_input("🗓️ Zeitraum")
+    params = {
+        "task": task_id,
+        "ziel": ziel,
+        "zeitfenster": zeitfenster,
+        "text": customer_memory + "\n\n" + context,
+        "customer_id": customer_id
+    }
+    if optional_pdf_path:
+        params["pdf_path"] = optional_pdf_path
 
 # -------------------------------  
-# Externe Datenquellen (nur Deep-Modus)  
+# Externe Datenquellen (optional bei bestimmten Tasks)  
 # -------------------------------
-if mode == "deep":
-    st.markdown("---")
-    st.subheader("🌐 Externe Datenquellen (Deep-Modus)")
-    rss_input      = st.text_area("RSS-Feed URLs (eine pro Zeile)", height=100)
-    trend_input    = st.text_input("Trend-Keywords (kommagetrennt)")
-    destatis_input = st.text_input("DESTATIS/Eurostat-Codes (kommagetrennt)")
+st.markdown("---")
+st.subheader("🌐 Optional: Externe Datenquellen für Content & Analyse")
 
-    st.markdown("### 📣 Ads-Bibliotheken (Deep-Modus)")
-    linkedin_input = st.text_input("LinkedIn Company Domain (z. B. unternehmensdomain.de)")
-    google_input   = st.text_input("Google Ads Search Term")
-    facebook_input = st.text_input("Facebook Page ID")
-else:
-    rss_input = trend_input = destatis_input = ""
-    linkedin_input = google_input = facebook_input = ""
+rss_input      = st.text_area("📡 RSS-Feed URLs (eine pro Zeile)", height=100)
+trend_input    = st.text_input("📈 Google Trends Keywords (kommagetrennt)")
+destatis_input = st.text_input("📊 DESTATIS/Eurostat-Suchbegriffe (kommagetrennt)")
+
+# -------------------------------  
+# Zusätzliche Datenquellen in params aufnehmen  
+# -------------------------------
+rss_feeds_list = [u.strip() for u in rss_input.splitlines() if u.strip()]
+trend_keywords_list = [k.strip() for k in trend_input.split(",") if k.strip()]
+destatis_queries_list = [d.strip() for d in destatis_input.split(",") if d.strip()]
+
+if mode == "deep" or (task == "Content Writing" and mode == "fast"):
+    params["rss_feeds"] = rss_feeds_list
+    params["trend_keywords"] = trend_keywords_list
+
+if mode == "deep" and task in [
+    "Content Analyse", "Content Writing", "Kampagnenplanung",
+    "Landingpage Strategie", "SEO Optimierung", "Monatsreport",
+    "Marketingmaßnahmen planen", "Wettbewerbsanalyse"
+]:
+    params["destatis_queries"] = destatis_queries_list
 
 # -------------------------------  
 # Initialer Agent-Call  
 # -------------------------------
-if st.button("✅ Absenden"):
-    # Parse Deep-Inputs
-    rss_feeds_list        = [u.strip() for u in rss_input.splitlines() if u.strip()]
-    trend_keywords_list   = [k.strip() for k in trend_input.split(",") if k.strip()]
-    destatis_queries_list = [c.strip() for c in destatis_input.split(",") if c.strip()]
+if st.button("🚀 Analyse starten") and task != "–":
+    with st.spinner("Der Agent denkt nach…"):
 
-    # Basis-Parameter
-    params = {
-        "customer_id": selected_customer if selected_customer != "– Kein Kunde –" else None,
-        "rss_feeds": rss_feeds_list,
-        "trend_keywords": trend_keywords_list,
-        "destatis_queries": destatis_queries_list,
-        "linkedin_company": linkedin_input,
-        "google_company": google_input,
-        "facebook_page": facebook_input
-    }
-
-    # Task-spezifische Parameter und Task-ID
-    if task == "Content Briefing":
-        if briefing_typ == "Analyse":
-            params.update({
-                "text": customer_memory + "\n\n" + context,
-                "url": url,
-                "pdf_path": optional_pdf_path
-            })
-            task_id = "content_analysis"
-        else:
-            if not (zielgruppe and tonalitaet and thema):
-                st.error("❗ Bitte Zielgruppe, Tonalität und Thema angeben.")
-                st.stop()
-            params.update({"zielgruppe": zielgruppe, "tonalitaet": tonalitaet, "thema": thema})
-            task_id = "briefing_write"
-
-    elif task == "Content-Vergleich":
-        if not (kunde and mitbewerber):
-            st.error("❗ Bitte beide Texte ausfüllen.")
-            st.stop()
-        params.update({"text_kunde": kunde, "text_mitbewerber": mitbewerber})
-        task_id = "vergleich"
-
-    elif task == "Wettbewerbsanalyse (Webseiten)":
-        if not (eigene_url and wettbewerber_urls.strip()):
-            st.error("❗ Bitte eigene URL und Wettbewerber-URLs angeben.")
-            st.stop()
-        params.update({
-            "eigene_url": eigene_url,
-            "wettbewerber_urls": [u.strip() for u in wettbewerber_urls.splitlines() if u.strip()]
-        })
-        task_id = "vergleich"
-
-    elif task == "SEO Audit":
-        params.update({"text": customer_memory + "\n\n" + context, "url": url})
-        task_id = "seo_audit"
-
-    elif task == "SEO Optimierung":
-        params.update({"text": customer_memory + "\n\n" + context, "url": url, "audit_pdf_path": optional_pdf_path})
-        task_id = "seo_optimize"
-
-    elif task == "Technisches SEO (Lighthouse)":
-        if not url:
-            st.error("❗ Verpflichtende URL angeben.")
-            st.stop()
-        params.update({"url": url})
-        task_id = "seo_lighthouse"
-
-    elif task == "Kampagnenplanung":
-        params.update({"text": customer_memory + "\n\n" + context, "url": url, "thema": thema, "kanal": kanal})
-        task_id = "campaign_plan"
-
-    elif task == "Landingpage Strategie":
-        if not url:
-            st.error("❗ Verpflichtende URL angeben.")
-            st.stop()
-        params.update({"url": url})
-        task_id = "landingpage_strategy"
-
-    elif task == "Monatsreport":
-        params.update({"text": customer_memory + "\n\n" + context, "url": url})
-        task_id = "monthly_report"
-
-    elif task == "Marketingmaßnahmen planen":
-        params.update({"text": customer_memory + "\n\n" + context, "url": url})
-        task_id = "tactical_actions"
-
-    else:
-        st.stop()
-
+  
     # Aufruf des Agents
     result = run_agent(
         task=task_id,
@@ -383,30 +455,23 @@ if st.button("✅ Absenden"):
             st.session_state[key] = ""
 
 # -------------------------------  
-# Rückfragen-Handling (Deep-Modus)  
+# Rückfrage-Dialog (manuell)  
 # -------------------------------
-if mode == "deep" and st.session_state.questions:
-    st.markdown("### 🤔 Rückfragen des Modells:")
-    for i, q in enumerate(st.session_state.questions):
-        st.text_input(label=q, key=f"clar_{i}")
+if st.session_state.response:
+    st.markdown("### 💬 Rückfrage stellen")
+    follow_up = st.text_input("❓ Weitere Frage an den Agenten", key="follow_up")
 
-    if st.button("📝 Rückfragen beantworten"):
-        clar = {
-            q: st.session_state[f"clar_{i}"]
-            for i, q in enumerate(st.session_state.questions)
-        }
-        result = run_agent(
-            task=task_id,
-            reasoning_mode=mode,
-            conversation_id=st.session_state.conv_id,
-            clarifications=clar,
-            **params
-        )
-        st.session_state.response  = result["response"]
-        st.session_state.questions = result["questions"]
-        st.session_state.conv_id    = result["conversation_id"]
-        for i in range(len(st.session_state.questions)):
-            st.session_state[f"clar_{i}"] = ""
+    if follow_up:
+        with st.spinner("⏳ Agent denkt über die Rückfrage nach…"):
+            follow_up_result = run_agent(
+                reasoning_mode=mode,
+                customer_id=customer_id,
+                conversation_id=st.session_state.conv_id,
+                follow_up=follow_up
+            )
+            st.session_state.response += "\\n\\n**Antwort:**\\n" + follow_up_result["response"]
+            st.session_state.questions.append(follow_up)
+            st.markdown(follow_up_result["response"])
 
 # -------------------------------  
 # Endgültiges Ergebnis anzeigen  

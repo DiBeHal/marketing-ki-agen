@@ -28,13 +28,10 @@ from agent.tools.lighthouse_runner import run_lighthouse
 from agent.loader import load_html, extract_seo_signals, load_pdf
 from agent.customer_memory import load_customer_memory
 from agent.activity_log import log_event
-from agent.tools.ads_runner import (
-    fetch_linkedin_ads, fetch_google_ads, fetch_facebook_ads
-)
+from agent.tools.ads_scraper import scrape_facebook_ads, scrape_google_ads, scrape_linkedin_ads
 
 # ===== LangChain LLM mit Token-Limit =====
 llm = ChatOpenAI(model="gpt-4o", max_tokens=3000)
-
 
 def search_google(brand_or_domain: str) -> List[str]:
     parsed = urlparse(brand_or_domain)
@@ -47,15 +44,7 @@ def search_google(brand_or_domain: str) -> List[str]:
         f"https://news.google.com/search?q={brand}"
     ]
 
-
-def get_context_from_text_or_url(
-    text: str,
-    url: str,
-    customer_id: Optional[str] = None
-) -> str:
-    """
-    Lädt Kontext aus Kunden-Memory, reinem Text oder einer URL.
-    """
+def get_context_from_text_or_url(text: str, url: str, customer_id: Optional[str] = None) -> str:
     context = ""
     if customer_id:
         context += load_customer_memory(customer_id) + "\n\n"
@@ -70,9 +59,6 @@ def get_context_from_text_or_url(
         raise ValueError("Kein verwertbarer Inhalt vorhanden (Text, URL oder Kunden-Memory).")
     return context
 
-
-# ===== Helper für externe Datenquellen =====
-
 def fetch_rss_snippets(feeds: List[str], limit: int = 3) -> str:
     snippets = []
     for feed in feeds:
@@ -86,11 +72,7 @@ def fetch_rss_snippets(feeds: List[str], limit: int = 3) -> str:
             continue
     return "\n".join(snippets)
 
-
-def fetch_trends_insights(
-    keywords: List[str],
-    timeframe: str = "now 7-d"
-) -> str:
+def fetch_trends_insights(keywords: List[str], timeframe: str = "now 7-d") -> str:
     if not keywords:
         return ""
     try:
@@ -103,11 +85,10 @@ def fetch_trends_insights(
                 series = df[kw].dropna()
                 if not series.empty:
                     change = series.iloc[-1] - series.iloc[0]
-                    insights.append(f"- Suchinteresse für '{kw}' im Zeitraum: Änderung um {change} Punkte")
+                    insights.append(f"- Suchinteresse für '{kw}': Änderung um {change} Punkte")
         return "\n".join(insights)
     except Exception:
         return ""
-
 
 def fetch_destatis_stats(codes: List[str]) -> str:
     stats = []
@@ -117,56 +98,36 @@ def fetch_destatis_stats(codes: List[str]) -> str:
             res = requests.get(url, timeout=5)
             if res.ok:
                 data = res.json()
-                # Annahme: 'value' Feld enthält die relevante Kennzahl
                 value = data.get("value", "n/a")
                 stats.append(f"- {code}: {value}")
         except Exception:
             continue
     return "\n".join(stats)
 
-
-# ===== Haupt-Dispatcher =====
-
-def run_agent(
-    task: str,
-    reasoning_mode: str = "fast",
-    conversation_id: Optional[str] = None,
-    clarifications: Optional[Dict[str, str]] = None,
-    **kwargs: Any
-) -> Dict[str, Any]:
-    # 1) Session-ID erzeugen, falls nicht vorhanden
+def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional[str] = None,
+              clarifications: Optional[Dict[str, str]] = None, **kwargs: Any) -> Dict[str, Any]:
     if conversation_id is None:
         conversation_id = str(uuid.uuid4())
 
-    # 2) Externe Daten nur im Deep-Modus vorladen
     rss_snippets = trends_insights = destatis_stats = ""
-    google_ads = facebook_ads = linkedin_ads = ""
+    facebook_ads = google_ads = linkedin_ads = ""
+
     if reasoning_mode == "deep":
         rss_snippets = fetch_rss_snippets(kwargs.get("rss_feeds", []))
         trends_insights = fetch_trends_insights(kwargs.get("trend_keywords", []))
         destatis_stats = fetch_destatis_stats(kwargs.get("destatis_queries", []))
-        if task in ("vergleich", "landingpage_strategy"):
-            linkedin_ads = fetch_linkedin_ads(kwargs.get("linkedin_company", ""), limit=3)
-            google_ads = fetch_google_ads(kwargs.get("google_company", ""), limit=3)
-            facebook_ads = fetch_facebook_ads(kwargs.get("facebook_page", ""), limit=3)
 
-    # 3) Prompt-Auswahl und -Bau pro Task
     if task == "content_analysis":
-        ctx = get_context_from_text_or_url(
-            kwargs.get("text", ""), kwargs.get("url", ""), kwargs.get("customer_id")
-        )
+        ctx = get_context_from_text_or_url(kwargs.get("text", ""), kwargs.get("url", ""), kwargs.get("customer_id"))
         tmpl = content_analysis_prompt_fast if reasoning_mode == "fast" else content_analysis_prompt_deep
-        if reasoning_mode == "fast":
-            prompt = tmpl.format(context=ctx)
-        else:
-            prompt = tmpl.format(
-                context=ctx,
-                rss_snippets=rss_snippets,
-                trends_insights=trends_insights,
-                destatis_stats=destatis_stats
-            )
+        prompt = tmpl.format(
+            context=ctx,
+            rss_snippets=rss_snippets,
+            trends_insights=trends_insights,
+            destatis_stats=destatis_stats
+        )
 
-    elif task == "briefing_write":
+    elif task == "content_writing":
         zg = kwargs.get("zielgruppe")
         ton = kwargs.get("tonalitaet")
         th = kwargs.get("thema")
@@ -182,81 +143,37 @@ def run_agent(
             destatis_stats=destatis_stats
         )
 
-    elif task == "vergleich":
-        # Multi-URL Wettbewerbsanalyse
-        if kwargs.get("eigene_url") and kwargs.get("wettbewerber_urls"):
-            ctx_k = load_html(kwargs["eigene_url"])
-            results = []
-            for url in kwargs["wettbewerber_urls"]:
-                try:
-                    ctx_m = load_html(url.strip())
-                    for link in search_google(url.strip()):
-                        ctx_m += "\n" + load_html(link)
-                    tmpl = (competitive_analysis_prompt_fast
-                            if reasoning_mode == "fast"
-                            else competitive_analysis_prompt_deep)
-                    if reasoning_mode == "fast":
-                        prompt = tmpl.format(
-                            context_kunde=ctx_k,
-                            context_mitbewerber=ctx_m
-                        )
-                    else:
-                        prompt = tmpl.format(
-                            context_kunde=ctx_k,
-                            context_mitbewerber=ctx_m,
-                            rss_snippets=rss_snippets,
-                            trends_insights=trends_insights,
-                            google_ads=google_ads,
-                            facebook_ads=facebook_ads,
-                            linkedin_ads=linkedin_ads
-                        )
-                    resp = llm.invoke(prompt)
-                    content = resp.content
-                    if hasattr(resp, "usage"):
-                        log_event({
-                            "type": "usage",
-                            "customer_id": kwargs.get("customer_id"),
-                            "conversation_id": conversation_id,
-                            "task": task,
-                            "mode": reasoning_mode,
-                            "input_tokens": resp.usage.prompt_tokens,
-                            "output_tokens": resp.usage.completion_tokens
-                        })
-                    results.append(f"🔗 {url}\n{content}")
-                except Exception as e:
-                    results.append(f"❌ Fehler bei {url}: {e}")
-            aggregated = "\n\n---\n\n".join(results)
-            log_event({
-                "type": "task_run",
-                "customer_id": kwargs.get("customer_id"),
-                "task": task,
-                "mode": reasoning_mode
-            })
-            return {"response": aggregated, "questions": [], "conversation_id": conversation_id}
+    elif task == "competitive_analysis":
+        ctx_k = load_html(kwargs.get("eigene_url", ""))
+        mitbewerber_urls = kwargs.get("wettbewerber_urls", [])
+        mitbewerber_kontexte = []
+        for url in mitbewerber_urls:
+            try:
+                ctx_m = load_html(url.strip())
+                mitbewerber_kontexte.append(ctx_m)
+            except Exception as e:
+                mitbewerber_kontexte.append(f"[Fehler beim Laden von {url}: {e}]")
 
-        # Einfache Text-gegen-Text-Vergleich
-        ck = kwargs.get("text_kunde")
-        cm = kwargs.get("text_mitbewerber")
-        if not ck or not cm:
-            raise ValueError("Beide Texte (Kunde & Mitbewerber) werden benötigt")
-        tmpl = (competitive_analysis_prompt_fast
-                if reasoning_mode == "fast"
-                else competitive_analysis_prompt_deep)
-        if reasoning_mode == "fast":
-            prompt = tmpl.format(
-                context_kunde=ck,
-                context_mitbewerber=cm
-            )
-        else:
-            prompt = tmpl.format(
-                context_kunde=ck,
-                context_mitbewerber=cm,
-                rss_snippets=rss_snippets,
-                trends_insights=trends_insights,
-                google_ads=google_ads,
-                facebook_ads=facebook_ads,
-                linkedin_ads=linkedin_ads
-            )
+        if reasoning_mode == "deep":
+            themenbegriffe = kwargs.get("ads_keywords", [])
+            company = kwargs.get("customer_name", "")
+            if kwargs.get("facebook_company"):
+                facebook_ads = scrape_facebook_ads(company, themenbegriffe)
+            if kwargs.get("google_company"):
+                google_ads = scrape_google_ads(company, themenbegriffe)
+            if kwargs.get("linkedin_company"):
+                linkedin_ads = scrape_linkedin_ads(company, themenbegriffe)
+
+        tmpl = competitive_analysis_prompt_fast if reasoning_mode == "fast" else competitive_analysis_prompt_deep
+        prompt = tmpl.format(
+            contexts_combined_kunde=ctx_k,
+            contexts_combined_mitbewerber="\n\n---\n\n".join(mitbewerber_kontexte),
+            rss_snippets=rss_snippets,
+            trends_insights=trends_insights,
+            google_ads=google_ads,
+            facebook_ads=facebook_ads,
+            linkedin_ads=linkedin_ads
+        )
 
     elif task == "seo_audit":
         ctx = get_context_from_text_or_url(
@@ -380,15 +297,12 @@ def run_agent(
     else:
         raise ValueError(f"Unbekannter Task: {task}")
 
-    # 4) Deep-Loop: Klarstellungen mergen
     if reasoning_mode == "deep" and clarifications:
         prompt = merge_clarifications(prompt, clarifications)
 
-    # 5) LLM-Aufruf
     resp = llm.invoke(prompt)
     content = resp.content if hasattr(resp, "content") else str(resp)
 
-    # 6) Usage-Logging nur wenn verfügbar
     if hasattr(resp, "usage"):
         log_event({
             "type": "usage",
@@ -400,10 +314,6 @@ def run_agent(
             "output_tokens": resp.usage.completion_tokens
         })
 
-    # 7) Rückfragen extrahieren (nur deep)
-    questions = extract_questions_from_response(content) if reasoning_mode == "deep" else []
-
-    # 8) Task-Run-Logging
     log_event({
         "type": "task_run",
         "customer_id": kwargs.get("customer_id"),
@@ -411,8 +321,5 @@ def run_agent(
         "mode": reasoning_mode
     })
 
-    return {
-        "response": content,
-        "questions": questions,
-        "conversation_id": conversation_id
-    }
+    return {"response": content, "questions": extract_questions_from_response(content), "conversation_id": conversation_id}
+
