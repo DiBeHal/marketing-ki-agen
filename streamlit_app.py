@@ -426,6 +426,8 @@ if mode == "deep" and task in [
 # Initialer Agent-Call  
 # -------------------------------
 if st.button("🚀 Analyse starten") and task != "–":
+    clar = {}  # Leerer Rückfragen-Dummy
+
     with st.spinner("Der Agent denkt nach…"):
         result = run_agent(
             task=task_id,
