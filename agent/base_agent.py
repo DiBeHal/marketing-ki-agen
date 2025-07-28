@@ -156,11 +156,14 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
         )
 
     elif task == "content_writing":
-        zg = kwargs.get("zielgruppe")
-        ton = kwargs.get("tonalitaet")
-        th = kwargs.get("thema")
-        if not all([zg, ton, th]):
+        zg = kwargs.get("zielgruppe") or ""
+        ton = kwargs.get("tonalitaet") or ""
+        th  = kwargs.get("thema") or ""
+
+        # Diese Prüfung nur beim ersten Call, nicht bei Rückfragen
+        if kwargs.get("is_follow_up") != True and not all([zg, ton, th]):
             raise ValueError("Zielgruppe, Tonalität und Thema sind Pflichtfelder.")
+
         tmpl = content_write_prompt_fast if reasoning_mode == "fast" else content_write_prompt_deep
         prompt = tmpl.format(
             zielgruppe=zg,
