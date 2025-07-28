@@ -427,19 +427,16 @@ if mode == "deep" and task in [
 # -------------------------------
 if st.button("🚀 Analyse starten") and task != "–":
     with st.spinner("Der Agent denkt nach…"):
-
-  
-    # Aufruf des Agents
-    result = run_agent(
-        task=task_id,
-        reasoning_mode=mode,
-        conversation_id=st.session_state.conv_id,
-        clarifications=None,
-        **params
-    )
-    st.session_state.response  = result["response"]
-    st.session_state.questions = result["questions"]
-    st.session_state.conv_id    = result["conversation_id"]
+        result = run_agent(
+            task=task_id,
+            reasoning_mode=mode,
+            conversation_id=st.session_state.conv_id,
+            clarifications=clar,
+            **params
+        )
+        st.session_state.response = result["response"]
+        st.session_state.questions = result.get("questions", [])
+        st.session_state.conv_id = result.get("conversation_id")
 
     log_event({
         "type": "task_run",
