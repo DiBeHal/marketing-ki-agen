@@ -443,7 +443,7 @@ Struktur der Analyse:
 1. Meta & Snippet-Optimierung:
    - Title & Meta-Description: Relevanz, Länge, CTR-Potenzial
    - Strukturierte Daten (falls sichtbar)
-   - SERP-Optimierung (z. B. für Featured Snippets)
+   - SERP-Optimierung (z. B. für Featured Snippets)
 
 2. Keyword-Analyse:
    - Hauptthema & Suchintention erkennen
