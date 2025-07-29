@@ -479,10 +479,15 @@ if params.get("use_auto_sources") and not st.session_state.get("themen_bestaetig
     else:
         st.session_state.final_topics = proposed_topics
 
-    if st.button("✅ Themen übernehmen und starten", key="confirm_and_start"):
-        params["topic_keywords"] = st.session_state.final_topics
+    if st.button("✅ Themen übernehmen und starten", key="confirm_edit"):
+        user_topics = [line.strip() for line in editable_topics.splitlines() if line.strip()]
+        if not user_topics:
+            st.warning("Bitte gib mindestens ein Thema an.")
+            st.stop()
+        params["topic_keywords"] = user_topics
         st.session_state.themen_bestaetigt = True
         st.rerun()
+
 
 # -------------------------------
 # Initialer Agent-Call
@@ -490,8 +495,8 @@ if params.get("use_auto_sources") and not st.session_state.get("themen_bestaetig
 if (not params.get("use_auto_sources")) or st.session_state.get("themen_bestaetigt"):
     clar = {}  # Initialisiere Rückfragen-Parameter
     with st.spinner("🧠 Der Agent denkt nach…"):
-        params["task"] = task_id
         result = run_agent(
+            task=task_id, 
             reasoning_mode=mode,
             conversation_id=st.session_state.conv_id,
             clarifications=clar,
