@@ -49,17 +49,20 @@ def search_google(brand_or_domain: str) -> List[str]:
 
 def get_context_from_text_or_url(text: str, url: str, customer_id: Optional[str] = None) -> str:
     context = ""
-    if customer_id:
-        context += load_customer_memory(customer_id) + "\n\n"
+
+    # Customer-Memory NICHT mehr hier laden – kommt bereits über text rein
     if text and len(text.strip().split()) > 50:
         context += text.strip()
+
     if url:
         try:
             context += "\n" + load_html(url)
         except Exception as e:
             context += f"\n[Fehler beim Laden von {url}: {e}]"
+
     if not context.strip():
         raise ValueError("Kein verwertbarer Inhalt vorhanden (Text, URL oder Kunden-Memory).")
+
     return context
 
 def fetch_rss_snippets(feeds: List[str], limit: int = 3) -> str:
@@ -210,12 +213,17 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
         ctx = get_context_from_text_or_url(
             kwargs.get("text", ""), kwargs.get("url", ""), kwargs.get("customer_id")
         )
-        signals = extract_seo_signals(kwargs.get("url", ""))
-        raw_lh = run_lighthouse(kwargs.get("url", ""))
-        if isinstance(raw_lh, dict):
-            seo_score = raw_lh.get("categories", {}).get("seo", {})
-        else:
-            seo_score = {}
+        signals = {}
+        seo_score = {}
+        if reasoning_mode == "deep":
+            try:
+                signals = extract_seo_signals(kwargs.get("url", ""))
+                raw_lh = run_lighthouse(kwargs.get("url", ""))
+                if isinstance(raw_lh, dict):
+                    seo_score = raw_lh.get("categories", {}).get("seo", {})
+            except Exception as e:
+                seo_score = {"error": str(e)}
+
         combined = (
             f"TEXT-INHALT:\n{ctx}\n\n"
             f"TECHNIK:\n{json.dumps(signals, indent=2)}\n\n"
@@ -228,7 +236,7 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
     elif task == "seo_optimize":
         txt = kwargs.get("text", "")
         url = kwargs.get("url", "")
-        audit_pdf = kwargs.get("audit_pdf_path")
+        audit_pdf = kwargs.get("pdf_path")
         full = get_context_from_text_or_url(txt, url, kwargs.get("customer_id"))
         if url:
             full += "\n\nWebsite-Text:\n" + load_html(url)
@@ -305,7 +313,7 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
         ctx = get_context_from_text_or_url(
             kwargs.get("text", ""), kwargs.get("url", ""), kwargs.get("customer_id")
         )
-        pdfp = kwargs.get("audit_pdf_path")
+        pdfp = kwargs.get("pdf_path")
         if pdfp and os.path.exists(pdfp):
             ctx += "\n\nPDF Anhang:\n" + load_pdf(pdfp)
         tmpl = (monthly_report_prompt_fast
@@ -317,7 +325,7 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
         ctx = get_context_from_text_or_url(
             kwargs.get("text", ""), kwargs.get("url", ""), kwargs.get("customer_id")
         )
-        pdfp = kwargs.get("audit_pdf_path")
+        pdfp = kwargs.get("pdf_path")
         if pdfp and os.path.exists(pdfp):
             ctx += "\n\n[Ergänzende Analyse aus PDF]:\n" + load_pdf(pdfp)
         tmpl = (tactical_actions_prompt_fast
@@ -343,7 +351,44 @@ Text:
     if reasoning_mode == "deep" and clarifications:
         prompt = merge_clarifications(prompt, clarifications)
 
-    resp = llm.invoke(prompt)
+    try:
+        resp = llm.invoke(prompt)
+        content = resp.content if hasattr(resp, "content") else str(resp)
+
+        if hasattr(resp, "usage"):
+            log_event({
+                "type": "usage",
+                "customer_id": kwargs.get("customer_id"),
+                "conversation_id": conversation_id,
+                "task": task,
+                "mode": reasoning_mode,
+                "input_tokens": resp.usage.prompt_tokens,
+                "output_tokens": resp.usage.completion_tokens
+            })
+
+        log_event({
+            "type": "task_complete",
+            "customer_id": kwargs.get("customer_id"),
+            "task": task,
+            "mode": reasoning_mode
+        })
+
+        return {
+            "response": content,
+            "questions": extract_questions_from_response(content),
+            "conversation_id": conversation_id
+        }
+
+    except Exception as e:
+        log_event({
+            "type": "error",
+            "customer_id": kwargs.get("customer_id"),
+            "task": task,
+            "mode": reasoning_mode,
+            "error": str(e)
+        })
+        raise
+
     content = resp.content if hasattr(resp, "content") else str(resp)
 
     if hasattr(resp, "usage"):
@@ -358,7 +403,7 @@ Text:
         })
 
     log_event({
-        "type": "task_run",
+        "type": "task_complete",
         "customer_id": kwargs.get("customer_id"),
         "task": task,
         "mode": reasoning_mode

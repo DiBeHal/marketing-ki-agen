@@ -371,6 +371,10 @@ elif task == "Landingpage Strategie":
 elif task == "Monatsreport":
     task_id = "monthly_report"
     monat = st.text_input("📆 Monat (z. B. 2024-07)")
+    import re
+    if monat and not re.match(r"^\d{4}-\d{2}$", monat):
+        st.error("❗ Bitte gib das Monat-Format korrekt an (z. B. 2024-07).")
+        st.stop()
     params = {
         "task": task_id,
         "monat": monat,
@@ -525,89 +529,47 @@ if (not params.get("use_auto_sources")) or st.session_state.get("themen_bestaeti
         st.session_state.setdefault(f"clar_{i}", "")
 
 # -------------------------------
-# Rückfragen-Loop (Deep-Modus)
-# -------------------------------
-while st.session_state.questions:
-    st.markdown("### 🤔 Rückfragen des Agenten (Deep-Modus):")
-    clarifications = {}
-
-    for i, question in enumerate(st.session_state.questions):
-        clarifications[question] = st.text_input(f"🔁 Rückfrage {i+1}: {question}", key=f"clar_{i}")
-
-    if st.button("📝 Rückfragen beantworten"):
-        with st.spinner("🔄 Rückfragen werden verarbeitet…"):
-            try:
-                follow_up_result = run_agent(
-                    task=task_id,
-                    reasoning_mode=mode,
-                    conversation_id=st.session_state.conv_id,
-                    clarifications=clarifications,
-                    **params
-                )
-
-                st.session_state.response = follow_up_result["response"]
-                st.session_state.questions = follow_up_result.get("questions", [])
-                st.session_state.conv_id = follow_up_result.get("conversation_id")
-
-            except Exception as e:
-                st.error(f"Fehler bei der Rückfragenverarbeitung: {e}")
-            st.experimental_rerun()
-    else:
-        st.stop()
-
-
-# -------------------------------
-# Rückfrage-Dialog (manuell)
+# Endgültiges Ergebnis anzeigen + Speichern
 # -------------------------------
 if st.session_state.response:
-    st.markdown("### 💬 Rückfrage stellen")
-    follow_up = st.text_input("❓ Weitere Frage an den Agenten", key="follow_up")
-
-    if follow_up:
-        with st.spinner("⏳ Agent denkt über die Rückfrage nach…"):
-            # task doppelt vermeiden
-            params_for_agent = dict(params)
-            params_for_agent.pop("task", None)
-
-            try:
-                follow_up_result = run_agent(
-                    task=task_id,
-                    reasoning_mode=mode,
-                    conversation_id=st.session_state.conv_id,
-                    follow_up=follow_up,
-                    is_follow_up=True,
-                    **params_for_agent
-                )
-
-                st.session_state.response += "\n\n**Antwort:**\n" + follow_up_result["response"]
-                st.session_state.questions.append(follow_up)
-                st.markdown(follow_up_result["response"])
-
-            except Exception as e:
-                st.error(f"Fehler bei der Rückfragenverarbeitung: {e}")
-
-# -------------------------------
-# Endgültiges Ergebnis anzeigen
-# -------------------------------
-if not st.session_state.questions and st.session_state.response:
     st.subheader("📢 Ergebnis:")
     st.write(st.session_state.response)
 
-    rating = st.slider("Wie hilfreich war das Ergebnis? (1–10)", 1, 10, 7)
-    comment = st.text_area("📝 Dein Feedback (optional)")
-    if st.button("✅ Feedback speichern"):
-        if selected_customer != "– Kein Kunde –":
-            log_event({
-                "type": "rating",
-                "customer_id": selected_customer,
-                "rating": rating,
-                "comment": comment
-            })
-            if rating >= 7:
-                save_customer_memory(selected_customer, st.session_state.response)
-                st.success("✅ Ergebnis im Kundengedächtnis gespeichert.")
-            else:
-                st.info("📩 Feedback gespeichert.")
-        else:
-            st.error("❗ Kein Kunde ausgewählt – Feedback wurde nicht gespeichert.")
+    if st.button("💾 Ergebnis ins Kundengedächtnis speichern"):
+        try:
+            save_customer_memory(customer_id, st.session_state.response)
+            st.success("✅ Ergebnis wurde erfolgreich im Kundengedächtnis gespeichert.")
+        except Exception as e:
+            st.error(f"❌ Fehler beim Speichern: {e}")
+
+# -------------------------------
+# Freier Folgefragen-Dialog (mehrfach möglich)
+# -------------------------------
+if st.session_state.response:
+    st.markdown("### ❓ Weitere Frage an den Agenten")
+    follow_up = st.text_area("Neue Frage eingeben", key="follow_up_text")
+
+    if st.button("Antwort generieren", key="ask_follow_up"):
+        if follow_up.strip():
+            with st.spinner("⏳ Agent denkt über die Rückfrage nach…"):
+                try:
+                    params_for_agent = dict(params)
+                    params_for_agent.pop("task", None)
+
+                    result = run_agent(
+                        task=task_id,
+                        reasoning_mode=mode,
+                        conversation_id=st.session_state.get("conv_id"),
+                        follow_up=follow_up,
+                        is_follow_up=True,
+                        **params_for_agent
+                    )
+
+                    st.session_state.response += f"\n\n---\n\n➡️ **Frage:** {follow_up}\n\n🧠 **Antwort:**\n{result['response']}"
+                    st.session_state.conv_id = result.get("conversation_id")
+
+                except Exception as e:
+                    st.error(f"Fehler bei der Folgefrage: {e}")
+
+
 
