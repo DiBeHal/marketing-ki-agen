@@ -490,8 +490,8 @@ if params.get("use_auto_sources") and not st.session_state.get("themen_bestaetig
 if (not params.get("use_auto_sources")) or st.session_state.get("themen_bestaetigt"):
     clar = {}  # Initialisiere Rückfragen-Parameter
     with st.spinner("🧠 Der Agent denkt nach…"):
+        params["task"] = task_id
         result = run_agent(
-            task=task_id,
             reasoning_mode=mode,
             conversation_id=st.session_state.conv_id,
             clarifications=clar,
