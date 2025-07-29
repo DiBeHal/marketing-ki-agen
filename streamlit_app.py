@@ -460,24 +460,15 @@ if params.get("use_auto_sources") and not st.session_state.get("themen_bestaetig
     suggested_topics_raw = extract_result["response"]
     proposed_topics = [line.strip("• ").strip() for line in suggested_topics_raw.splitlines() if line.strip()]
     st.session_state.auto_topics = proposed_topics
+    st.session_state.final_topics = proposed_topics  # Default, falls keine Bearbeitung erfolgt
 
     st.markdown("### 🧠 Themenvorschlag des Agenten:")
-    for i, t in enumerate(proposed_topics, 1):
-        st.markdown(f"{i}. {t}")
-
-    st.markdown("#### 📌 Themen übernehmen?")
-    confirm = st.radio("Möchtest du die vorgeschlagenen Themen verwenden?", ["✅ Ja", "✍️ Nein, manuell anpassen"], key="confirm_topics")
-
-    if confirm == "✍️ Nein, manuell anpassen":
-        manual_topics = st.text_area("✏️ Bitte gib deine eigenen Themen ein (ein Thema pro Zeile)", key="manual_topics_input")
-        if not manual_topics:
-            st.warning("Bitte gib mindestens ein Thema an.")
-            st.stop()
-        else:
-            user_topics = [line.strip() for line in manual_topics.splitlines() if line.strip()]
-            st.session_state.final_topics = user_topics
-    else:
-        st.session_state.final_topics = proposed_topics
+    editable_topics = st.text_area(
+        "✏️ Bearbeite oder lösche die vorgeschlagenen Themen (ein Thema pro Zeile):",
+        value="\n".join(proposed_topics),
+        height=150,
+        key="editable_topics"
+    )
 
     if st.button("✅ Themen übernehmen und starten", key="confirm_edit"):
         user_topics = [line.strip() for line in editable_topics.splitlines() if line.strip()]
