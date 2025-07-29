@@ -436,7 +436,9 @@ if show_sources:
 # -------------------------------
 clar = {}  # Initialisiere Rückfragen-Parameter
 
-# Optional: Automatische Themenextraktion vorschalten
+# -------------------------------
+# Themenvorschläge automatisch holen und bearbeiten
+# -------------------------------
 if params.get("use_auto_sources") and not st.session_state.get("themen_bestaetigt"):
     st.info("🤖 Der Agent extrahiert automatisch relevante Themen für externe Datenquellen…")
 
@@ -459,32 +461,30 @@ if params.get("use_auto_sources") and not st.session_state.get("themen_bestaetig
     proposed_topics = [line.strip("• ").strip() for line in suggested_topics_raw.splitlines() if line.strip()]
     st.session_state.auto_topics = proposed_topics
 
-    st.markdown("### 🧠 Themenvorschlag des Agenten:")
-    for i, t in enumerate(proposed_topics, 1):
-        st.markdown(f"{i}. {t}")
+    st.markdown("### 🧠 Themenvorschläge des Agenten:")
+    editable_topics = st.text_area(
+        "✏️ Bearbeite oder lösche die vorgeschlagenen Themen (ein Thema pro Zeile):",
+        value="\n".join(proposed_topics),
+        height=150,
+        key="editable_topics"
+    )
 
-    st.markdown("#### 📌 Themen übernehmen?")
-    confirm = st.radio("Möchtest du die vorgeschlagenen Themen verwenden?", ["✅ Ja", "✍️ Nein, manuell anpassen"], key="confirm_topics")
-
-    if confirm == "✍️ Nein, manuell anpassen":
-        manual_topics = st.text_area("✏️ Bitte gib deine eigenen Themen ein (ein Thema pro Zeile)")
-        if not manual_topics:
+    if st.button("✅ Themen übernehmen und starten", key="confirm_edit"):
+        user_topics = [line.strip() for line in editable_topics.splitlines() if line.strip()]
+        if not user_topics:
             st.warning("Bitte gib mindestens ein Thema an.")
             st.stop()
-        else:
-            user_topics = [line.strip() for line in manual_topics.splitlines() if line.strip()]
-            params["topic_keywords"] = user_topics
-    else:
-        params["topic_keywords"] = proposed_topics
-
-# Jetzt finaler Start
-    if st.button("✅ Themen übernehmen und starten", key="trigger_analysis"):
+        params["topic_keywords"] = user_topics
         st.session_state.themen_bestaetigt = True
-        st.experimental_rerun()
+        st.rerun()
 
-# Agent ausführen (nur wenn Themen bestätigt oder Auto-Modus deaktiviert)
+# -------------------------------
+# Initialer Agent-Call (nur wenn Themen bereits bestätigt oder keine benötigt)
+# -------------------------------
 if (not params.get("use_auto_sources")) or st.session_state.get("themen_bestaetigt"):
     if st.button("🚀 Analyse starten") and task != "–":
+        clar = {}  # Rückfragen-Parameter leeren
+
         with st.spinner("🧠 Der Agent denkt nach…"):
             result = run_agent(
                 task=task_id,
@@ -497,7 +497,7 @@ if (not params.get("use_auto_sources")) or st.session_state.get("themen_bestaeti
             st.session_state.response = result["response"]
             st.session_state.questions = result.get("questions", [])
             st.session_state.conv_id = result.get("conversation_id")
-            st.session_state.themen_bestaetigt = False  # zurücksetzen
+            st.session_state.themen_bestaetigt = False  # zurücksetzen nach dem Lauf
 
         log_event({
             "type": "task_run",
@@ -506,7 +506,6 @@ if (not params.get("use_auto_sources")) or st.session_state.get("themen_bestaeti
             "mode": mode
         })
 
-        # Initialisiere Rückfragen-Felder
         for i in range(len(st.session_state.questions)):
             key = f"clar_{i}"
             if key not in st.session_state:
