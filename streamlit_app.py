@@ -437,7 +437,7 @@ if show_sources:
 clar = {}  # Initialisiere Rückfragen-Parameter
 
 # -------------------------------
-# Themenvorschläge automatisch holen und bearbeiten
+# Themenvorschlag + Bestätigung
 # -------------------------------
 if params.get("use_auto_sources") and not st.session_state.get("themen_bestaetigt"):
     st.info("🤖 Der Agent extrahiert automatisch relevante Themen für externe Datenquellen…")
@@ -461,54 +461,59 @@ if params.get("use_auto_sources") and not st.session_state.get("themen_bestaetig
     proposed_topics = [line.strip("• ").strip() for line in suggested_topics_raw.splitlines() if line.strip()]
     st.session_state.auto_topics = proposed_topics
 
-    st.markdown("### 🧠 Themenvorschläge des Agenten:")
-    editable_topics = st.text_area(
-        "✏️ Bearbeite oder lösche die vorgeschlagenen Themen (ein Thema pro Zeile):",
-        value="\n".join(proposed_topics),
-        height=150,
-        key="editable_topics"
-    )
+    st.markdown("### 🧠 Themenvorschlag des Agenten:")
+    for i, t in enumerate(proposed_topics, 1):
+        st.markdown(f"{i}. {t}")
 
-    if st.button("✅ Themen übernehmen und starten", key="confirm_edit"):
-        user_topics = [line.strip() for line in editable_topics.splitlines() if line.strip()]
-        if not user_topics:
+    st.markdown("#### 📌 Themen übernehmen?")
+    confirm = st.radio("Möchtest du die vorgeschlagenen Themen verwenden?", ["✅ Ja", "✍️ Nein, manuell anpassen"], key="confirm_topics")
+
+    if confirm == "✍️ Nein, manuell anpassen":
+        manual_topics = st.text_area("✏️ Bitte gib deine eigenen Themen ein (ein Thema pro Zeile)", key="manual_topics_input")
+        if not manual_topics:
             st.warning("Bitte gib mindestens ein Thema an.")
             st.stop()
-        params["topic_keywords"] = user_topics
+        else:
+            user_topics = [line.strip() for line in manual_topics.splitlines() if line.strip()]
+            st.session_state.final_topics = user_topics
+    else:
+        st.session_state.final_topics = proposed_topics
+
+    if st.button("✅ Themen übernehmen und starten", key="confirm_and_start"):
+        params["topic_keywords"] = st.session_state.final_topics
         st.session_state.themen_bestaetigt = True
         st.rerun()
 
 # -------------------------------
-# Initialer Agent-Call (nur wenn Themen bereits bestätigt oder keine benötigt)
+# Initialer Agent-Call
 # -------------------------------
 if (not params.get("use_auto_sources")) or st.session_state.get("themen_bestaetigt"):
-    if st.button("🚀 Analyse starten") and task != "–":
-        clar = {}  # Rückfragen-Parameter leeren
+    clar = {}  # Initialisiere Rückfragen-Parameter
+    with st.spinner("🧠 Der Agent denkt nach…"):
+        result = run_agent(
+            task=task_id,
+            reasoning_mode=mode,
+            conversation_id=st.session_state.conv_id,
+            clarifications=clar,
+            **params
+        )
 
-        with st.spinner("🧠 Der Agent denkt nach…"):
-            result = run_agent(
-                reasoning_mode=mode,
-                conversation_id=st.session_state.conv_id,
-                clarifications=clar,
-                **params
-            )
+        st.session_state.response = result["response"]
+        st.session_state.questions = result.get("questions", [])
+        st.session_state.conv_id = result.get("conversation_id")
+        st.session_state.themen_bestaetigt = False  # zurücksetzen nach Analyse
 
-            st.session_state.response = result["response"]
-            st.session_state.questions = result.get("questions", [])
-            st.session_state.conv_id = result.get("conversation_id")
-            st.session_state.themen_bestaetigt = False  # zurücksetzen nach dem Lauf
+    log_event({
+        "type": "task_run",
+        "customer_id": params.get("customer_id"),
+        "task": task_id,
+        "mode": mode
+    })
 
-        log_event({
-            "type": "task_run",
-            "customer_id": params.get("customer_id"),
-            "task": task_id,
-            "mode": mode
-        })
-
-        for i in range(len(st.session_state.questions)):
-            key = f"clar_{i}"
-            if key not in st.session_state:
-                st.session_state[key] = ""
+    for i in range(len(st.session_state.questions)):
+        key = f"clar_{i}"
+        if key not in st.session_state:
+            st.session_state[key] = ""
 
 # -------------------------------
 # Rückfragen-Loop (Deep-Modus)
