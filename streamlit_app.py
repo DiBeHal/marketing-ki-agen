@@ -551,6 +551,36 @@ while st.session_state.questions:
 
 
 # -------------------------------
+# Rückfrage-Dialog (manuell)
+# -------------------------------
+if st.session_state.response:
+    st.markdown("### 💬 Rückfrage stellen")
+    follow_up = st.text_input("❓ Weitere Frage an den Agenten", key="follow_up")
+
+    if follow_up:
+        with st.spinner("⏳ Agent denkt über die Rückfrage nach…"):
+            # task doppelt vermeiden
+            params_for_agent = dict(params)
+            params_for_agent.pop("task", None)
+
+            try:
+                follow_up_result = run_agent(
+                    task=task_id,
+                    reasoning_mode=mode,
+                    conversation_id=st.session_state.conv_id,
+                    follow_up=follow_up,
+                    is_follow_up=True,
+                    **params_for_agent
+                )
+
+                st.session_state.response += "\n\n**Antwort:**\n" + follow_up_result["response"]
+                st.session_state.questions.append(follow_up)
+                st.markdown(follow_up_result["response"])
+
+            except Exception as e:
+                st.error(f"Fehler bei der Rückfragenverarbeitung: {e}")
+
+# -------------------------------
 # Endgültiges Ergebnis anzeigen
 # -------------------------------
 if not st.session_state.questions and st.session_state.response:
@@ -575,28 +605,3 @@ if not st.session_state.questions and st.session_state.response:
         else:
             st.error("❗ Kein Kunde ausgewählt – Feedback wurde nicht gespeichert.")
 
-# -------------------------------
-# Rückfrage-Dialog (manuell)
-# -------------------------------
-if st.session_state.response:
-    st.markdown("### 💬 Rückfrage stellen")
-    follow_up = st.text_input("❓ Weitere Frage an den Agenten", key="follow_up")
-
-    if follow_up:
-        with st.spinner("⏳ Agent denkt über die Rückfrage nach…"):
-            try:
-                follow_up_result = run_agent(
-                    task=task_id,
-                    reasoning_mode=mode,
-                    conversation_id=st.session_state.conv_id,
-                    follow_up=follow_up,
-                    is_follow_up=True,
-                    **params
-                )
-
-                st.session_state.response += "\n\n**Antwort auf Rückfrage:**\n" + follow_up_result["response"]
-                st.session_state.questions.append(follow_up)
-                st.markdown(follow_up_result["response"])
-
-            except Exception as e:
-                st.error(f"❌ Fehler bei der Rückfrage: {e}")
