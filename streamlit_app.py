@@ -484,21 +484,29 @@ if params.get("use_auto_sources") and not st.session_state.get("themen_bestaetig
 # Initialer Agent-Call
 # -------------------------------
 if (not params.get("use_auto_sources")) or st.session_state.get("themen_bestaetigt"):
-    clar = {}  # Initialisiere Rückfragen-Parameter
+
+    clar = {}  # Rückfragen-Parameter initialisieren
+
+    # ❗ task darf nicht doppelt übergeben werden
+    params_for_agent = dict(params)
+    params_for_agent.pop("task", None)
+
     with st.spinner("🧠 Der Agent denkt nach…"):
         result = run_agent(
-            task=task_id, 
+            task=task_id,  # Nur hier übergeben
             reasoning_mode=mode,
             conversation_id=st.session_state.conv_id,
             clarifications=clar,
-            **params
+            **params_for_agent
         )
 
-        st.session_state.response = result["response"]
+        # Zwischenspeichern der Ergebnisse
+        st.session_state.response = result.get("response", "")
         st.session_state.questions = result.get("questions", [])
         st.session_state.conv_id = result.get("conversation_id")
-        st.session_state.themen_bestaetigt = False  # zurücksetzen nach Analyse
+        st.session_state.themen_bestaetigt = False  # zurücksetzen für zukünftige Runs
 
+    # Logging
     log_event({
         "type": "task_run",
         "customer_id": params.get("customer_id"),
@@ -506,10 +514,12 @@ if (not params.get("use_auto_sources")) or st.session_state.get("themen_bestaeti
         "mode": mode
     })
 
+    # Rückfragen initialisieren
     for i in range(len(st.session_state.questions)):
         key = f"clar_{i}"
         if key not in st.session_state:
             st.session_state[key] = ""
+
 
 # -------------------------------
 # Rückfragen-Loop (Deep-Modus)
