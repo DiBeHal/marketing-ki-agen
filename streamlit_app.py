@@ -487,7 +487,6 @@ if (not params.get("use_auto_sources")) or st.session_state.get("themen_bestaeti
 
         with st.spinner("🧠 Der Agent denkt nach…"):
             result = run_agent(
-                task=task_id,
                 reasoning_mode=mode,
                 conversation_id=st.session_state.conv_id,
                 clarifications=clar,
