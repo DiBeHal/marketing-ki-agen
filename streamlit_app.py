@@ -449,9 +449,11 @@ elif task == "Marketingmaßnahmen planen":
 # Externe Datenquellen (automatisch vs. manuell)
 # -------------------------------
 
+# Bedingungen für automatische Themenquellen
 show_sources = (
     mode == "deep" or (mode == "fast" and task == "Content Writing")
 )
+params["use_auto_sources"] = show_sources
 use_sources = False
 rss_input = trend_input = destatis_input = ""
 
@@ -491,10 +493,6 @@ clar = {}  # Initialisiere Rückfragen-Parameter
 # Themenvorschlag + Bestätigung
 # -------------------------------
 
-# Debug-Zeile (optional entfernbar)
-st.warning(f"DEBUG: use_auto_sources={params.get('use_auto_sources')} | themen_bestaetigt={st.session_state.get('themen_bestaetigt')}")
-
-# Block nur aktiv, wenn use_auto_sources=True und noch keine Bestätigung erfolgt ist
 if params.get("use_auto_sources") and not st.session_state.get("themen_bestaetigt"):
 
     st.info("🤖 Der Agent extrahiert automatisch relevante Themen für externe Datenquellen…")
@@ -506,7 +504,6 @@ if params.get("use_auto_sources") and not st.session_state.get("themen_bestaetig
         customer_memory
     ])
 
-    # Hole Themenvorschläge vom Agenten
     extract_result = run_agent(
         task="extract_topics",
         reasoning_mode=mode,
@@ -520,14 +517,11 @@ if params.get("use_auto_sources") and not st.session_state.get("themen_bestaetig
         st.write("DEBUG: extract_result:", extract_result)
         st.stop()
 
-    # Extrahiere Themen als Liste
-    suggested_topics_raw = extract_result["response"]
-    proposed_topics = [line.strip("• ").strip() for line in suggested_topics_raw.splitlines() if line.strip()]
+    proposed_topics = [line.strip("• ").strip() for line in extract_result["response"].splitlines() if line.strip()]
 
     st.session_state.auto_topics = proposed_topics
-    st.session_state.final_topics = proposed_topics  # Default
+    st.session_state.final_topics = proposed_topics
 
-    # Eingabefeld zur Bearbeitung
     st.markdown("### 🧠 Themenvorschlag des Agenten:")
     editable_topics = st.text_area(
         "✏️ Bearbeite oder lösche die vorgeschlagenen Themen (ein Thema pro Zeile):",
@@ -536,7 +530,6 @@ if params.get("use_auto_sources") and not st.session_state.get("themen_bestaetig
         key="editable_topics"
     )
 
-    # Bestätigungs-Button
     if st.button("✅ Themen übernehmen und starten", key="confirm_edit"):
         user_topics = [line.strip() for line in editable_topics.splitlines() if line.strip()]
         if not user_topics:
