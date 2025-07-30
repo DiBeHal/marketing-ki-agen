@@ -609,14 +609,14 @@ if ((not params.get("use_auto_sources")) or st.session_state.get("themen_bestaet
     params_for_agent = dict(params)
     params_for_agent.pop("task", None)
 
-    # 🔒 Verhindere KeyError durch fehlende Pflichtfelder
-    params_for_agent["zielgruppe"] = params_for_agent.get("zielgruppe", "")
-    params_for_agent["branche"] = params_for_agent.get("branche", "")
-    params_for_agent["text"] = params_for_agent.get("text", "")
-    params_for_agent["url"] = params_for_agent.get("url", "")
-    params_for_agent["thema"] = params_for_agent.get("thema", "")
-    params_for_agent["topic_keywords"] = params.get("topic_keywords", [])
-    params_for_agent["customer_id"] = params.get("customer_id", "").strip()
+    # Robuste Initialisierung aller Felder
+    params_for_agent["zielgruppe"]     = (params.get("zielgruppe") or "").strip()
+    params_for_agent["branche"]        = (params.get("branche") or "").strip()
+    params_for_agent["text"]           = (params.get("text") or "").strip()
+    params_for_agent["url"]            = (params.get("url") or "").strip()
+    params_for_agent["thema"]          = (params.get("thema") or "").strip()
+    params_for_agent["topic_keywords"] = params.get("topic_keywords") or []
+    params_for_agent["customer_id"]    = (params.get("customer_id") or "").strip()
 
     with st.spinner("🧠 Der Agent denkt nach…"):
         result = run_agent(
