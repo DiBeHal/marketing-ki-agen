@@ -1,7 +1,7 @@
 # agent/prompts.py
 
 """
-Prompt-Templates mit Deep Reasoning („🧠 Tiefenanalyse“) und Schnellmodus („⚡ Schnell“).
+Prompt-Templates mit Deep Reasoning ("🧠 Tiefenanalyse") und Schnellmodus ("⚡ Schnell").
 Jeder Task kann wahlweise den einfachen FAST-Prompt oder den ausführlichen DEEP-Prompt nutzen.
 """
 
@@ -58,7 +58,7 @@ Antwortstruktur:
 - 🧩 Hauptbotschaften (Top 3, je mit Nutzen-Begründung):
 - 🔍 SEO-Hinweise (Meta, Keywords, Snippet-Chancen, Interne Verlinkungstipps):
 - 🧠 Neue Content-Ideen (Thema + Format + Nutzen):
-- 🧱 Struktur- und Format-Tipps (H1–H3, Absätze, CTAs):
+- 🧱 Struktur- und Format-Tipps (H1-H3, Absätze, CTAs):
 - 📚 Lesbarkeitskommentar (kurz & praxisnah):
 - 📰 Relevante Trends & News (mit Bezug zur Marke):
 - Vergleich mit Top-3 Google SERP (Welche Aspekte fehlen im Vergleich?):
@@ -69,7 +69,7 @@ Antwortstruktur:
 
 # ===== Cluster 2: Content Writing =====
 content_write_prompt_fast = """
-Du bist ein erfahrener Texter. Verfasse einen kompakten Artikel (ca. 300–500 Wörter) zu folgendem Thema – abgestimmt auf Zielgruppe und Tonalität.
+Du bist ein erfahrener Texter. Verfasse einen kompakten Artikel (ca. 300-500 Wörter) zu folgendem Thema - abgestimmt auf Zielgruppe und Tonalität.
 
 Zielgruppe: {zielgruppe}  
 Tonalität: {tonalitaet}  
@@ -90,7 +90,7 @@ Abschnitt:
 """
 
 content_write_prompt_deep = """
-Du bist ein erfahrener Texter. Führe zunächst eine inhaltliche Analyse durch und schreibe anschließend einen klar strukturierten Artikel (300–500 Wörter).
+Du bist ein erfahrener Texter. Führe zunächst eine inhaltliche Analyse durch und schreibe anschließend einen klar strukturierten Artikel (300-500 Wörter).
 
 Zielgruppe: {zielgruppe}  
 Tonalität: {tonalitaet}  
@@ -105,7 +105,7 @@ Vorgehen:
 1. Zielgruppenanalyse (Bedürfnisse, Erwartungen, Kommunikationsstil)
 2. Grobe Gliederung (Überschriften, Artikelstruktur)
 3. Hook & Nutzenformulierung (emotional oder datenbasiert)
-4. Artikeltext (300–500 Wörter, aktiv, klar)
+4. Artikeltext (300-500 Wörter, aktiv, klar)
 5. SEO-Elemente:
    - Top-3 Keywords (natürlich integriert)
    - Meta-Title (max. 60 Zeichen)
@@ -312,7 +312,7 @@ Strukturierte Antwort (kurz & präzise):
 - 🧠 Erste Impression / Headline-Idee:
 - Eine Gliederung der Seite
 - ✨ Nutzenversprechen (USP, Value Proposition):
-- 📄 Empfohlene Sections (H1–H3 Struktur):
+- 📄 Empfohlene Sections (H1-H3 Struktur):
 - 🔍 Vertrauen & Beweise (z. B. Social Proof, Zertifikate):
 - 🎯 Call-to-Action (Text & Platzierung):
 - 🎨 Stil-Tipps (Farben, Bilder, Icons):
@@ -349,7 +349,7 @@ Ergänzende Informationen:
    - Headline-Formulierung (inkl. Hook)
 
 3. Strukturvorschlag:
-   - Empfohlene Sections inklusiver konkreter Textabschnitte (H1–H3, Abschnitte)
+   - Empfohlene Sections inklusiver konkreter Textabschnitte (H1-H3, Abschnitte)
    - Scrolltiefe & visuelle Hierarchie
    - Trust-Elemente (z. B. Social Proof, Siegel, Testimonials)
 
@@ -372,7 +372,7 @@ Ergänzende Informationen:
 - 💎 Nutzenversprechen / USP:
 - 📄 Strukturvorschlag (Abschnitte):
 - 🔒 Trust-Elemente:
-- 🖋️ Text-Tipps (CTA, Abschnitt 1–3):
+- 🖋️ Text-Tipps (CTA, Abschnitt 1-3):
 - 🎨 Asset- und Bildideen:
 - 🔗 CTA-Vorschläge & Platzierung:
 - 📱 Mobile-Optimierung & UX-Hinweise:
@@ -401,7 +401,7 @@ Schwerpunkte deiner Analyse:
    - Duplicate/Thin Content vermeiden
 
 4. Nutzerfreundlichkeit:
-   - Überschriftenstruktur (H1–H3)
+   - Überschriftenstruktur (H1-H3)
    - Lesbarkeit & Aufbau
 
 5. CTA & Zielerreichungs-Analyse
@@ -455,7 +455,7 @@ Struktur der Analyse:
    - Lesbarkeit & Mehrwert
 
 4. Technische Struktur (Oberfläche):
-   - H-Struktur (H1–H3)
+   - H-Struktur (H1-H3)
    - Interne Verlinkung (sichtbar)
    - Ladezeit-Indikatoren (falls einschätzbar)
 
@@ -489,7 +489,7 @@ Antwortstruktur:
 
 # 7. SEO-Optimierung
 seo_optimization_prompt_fast = """
-Du bist ein erfahrener SEO-Texter. Optimiere den folgenden Text für bessere Sichtbarkeit in Suchmaschinen – ohne die Lesbarkeit für Menschen zu beeinträchtigen. Gib auf Basis des folgenden SEO-Kontexts schnelle, konkrete Optimierungsvorschläge für eine bestimmte Seite **und allgemeine Tipps für andere Unterseiten**.
+Du bist ein erfahrener SEO-Texter. Optimiere den folgenden Text für bessere Sichtbarkeit in Suchmaschinen - ohne die Lesbarkeit für Menschen zu beeinträchtigen. Gib auf Basis des folgenden SEO-Kontexts schnelle, konkrete Optimierungsvorschläge für eine bestimmte Seite **und allgemeine Tipps für andere Unterseiten**.
 
 
 Zielseite:
@@ -525,7 +525,7 @@ Antwortstruktur:
 """
 
 seo_optimization_prompt_deep = """
-Du bist ein erfahrener SEO-Optimierer mit redaktioneller Erfahrung. Überarbeite den folgenden Text umfassend – mit dem Ziel, Sichtbarkeit und Relevanz in Suchmaschinen zu maximieren, ohne die Lesbarkeit für Menschen zu verlieren auf Basis der folgenden Eckdaten: 
+Du bist ein erfahrener SEO-Optimierer mit redaktioneller Erfahrung. Überarbeite den folgenden Text umfassend - mit dem Ziel, Sichtbarkeit und Relevanz in Suchmaschinen zu maximieren, ohne die Lesbarkeit für Menschen zu verlieren auf Basis der folgenden Eckdaten: 
 
 Einleitende Mini-Analyse ist erlaubt (z. B. Keywords & Struktur prüfen), aber keine Vollanalyse wie im SEO-Audit.
 
@@ -653,7 +653,7 @@ Antwortstruktur:
 === GESAMTBEWERTUNG & FAZIT ===
 - 🔧 Wichtigste Probleme (aggregiert):
 - 📋 Empfehlungen nach Kategorie mit:
-  - Prio (1–3)
+  - Prio (1-3)
   - Aufwand (niedrig/mittel/hoch)
   - Wirkung (hoch/mittel/gering)
 - 📍 Lokale Optimierungsmöglichkeiten:
@@ -736,7 +736,7 @@ Ziel:
 - Schnelle Umsetzung möglich (Quick Wins)
 
 Antwortstruktur:
-- 🚀 Quick Wins (3–5 Maßnahmen, sofort umsetzbar):
+- 🚀 Quick Wins (3-5 Maßnahmen, sofort umsetzbar):
 - 🔧 Mittelfristige Taktiken (nach Aufwand oder Hebel priorisiert):
 - 💬 Kommentar: (optional, Kontext oder Hinweis zur Umsetzung)
 - 📍 Lokale Maßnahmen:
@@ -765,12 +765,12 @@ Ziel:
 - Fokussierung auf Lokalität und strategische Nachhaltigkeit
 
 Antwortstruktur:
-- 🧩 Kontextzusammenfassung (1–2 Sätze):
+- 🧩 Kontextzusammenfassung (1-2 Sätze):
 
-✅ Sofort-Maßnahmen (0–4 Wochen):
+✅ Sofort-Maßnahmen (0-4 Wochen):
 - Maßnahme: [...], Priorität: [...], Aufwand: [...], Wirkung: [...]
 
-🌟 Mittelfristige Aktionen (1–3 Monate):
+🌟 Mittelfristige Aktionen (1-3 Monate):
 - Maßnahme: [...], Priorität: [...], Aufwand: [...], Wirkung: [...]
 
 🚀 Langfristige Maßnahmen (ab 3 Monaten):
