@@ -645,6 +645,7 @@ if ((not params.get("use_auto_sources")) or st.session_state.get("themen_bestaet
     params_for_agent["zielgruppe"]     = (params.get("zielgruppe") or "").strip()
     params_for_agent["branche"]        = (params.get("branche") or "").strip()
     params_for_agent["text"]           = (params.get("text") or "").strip()
+    params_for_agent["context"]        = params_for_agent["text"] 
     params_for_agent["url"]            = (params.get("url") or "").strip()
     params_for_agent["thema"]          = (params.get("thema") or "").strip()
     params_for_agent["topic_keywords"] = params.get("topic_keywords") or []
