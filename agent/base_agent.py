@@ -233,7 +233,7 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
         tmpl = seo_audit_prompt_fast if reasoning_mode == "fast" else seo_audit_prompt_deep
         prompt = tmpl.format(context=combined)
 
-    elif task == "seo_optimize":
+    elif task in ["seo_optimize", "seo_optimization"]:
         txt = kwargs.get("text", "")
         url = kwargs.get("url", "")
         audit_pdf = kwargs.get("pdf_path")
@@ -243,10 +243,13 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
             full += "\n\nSEO-Signale:\n" + json.dumps(extract_seo_signals(url), indent=2)
         if audit_pdf and os.path.exists(audit_pdf):
             full += "\n\nSEO Audit Report:\n" + load_pdf(audit_pdf)
-        tmpl = (seo_optimization_prompt_fast
-                if reasoning_mode == "fast"
-                else seo_optimization_prompt_deep)
+        tmpl = (
+            seo_optimization_prompt_fast
+            if reasoning_mode == "fast"
+            else seo_optimization_prompt_deep
+        )
         prompt = tmpl.format(context=full)
+        resp = llm.invoke(prompt)
 
     elif task == "campaign_plan":
         ctx = get_context_from_text_or_url(

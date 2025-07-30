@@ -210,6 +210,9 @@ if task != st.session_state.last_task or mode != st.session_state.last_mode:
     st.session_state.response = ""
     st.session_state.last_task = task
     st.session_state.last_mode = mode
+if "start_agent" not in st.session_state:
+    st.session_state.start_agent = False
+
 
 # Kundenkontext
 customer_options = ["– Kein Kunde –"] + list_customer_ids()
@@ -312,10 +315,18 @@ elif task == "SEO Audit":
         params["pdf_path"] = optional_pdf_path
 
 elif task == "SEO Optimierung":
-    task_id = "seo_optimization"
+    task_id = "seo_optimize"
+    st.markdown("🔍 Lade optionalen Audit-Report hoch (PDF) oder ergänze Text/URL.")
+
+    combined_context = (customer_memory + "\n\n" + context).strip()
+    if not combined_context and not optional_pdf_path:
+        st.error("❗ Kein Kontext vorhanden – bitte Text, URL oder PDF angeben.")
+        st.stop()
+
     params = {
         "task": task_id,
-        "text": customer_memory + "\n\n" + context,
+        "text": combined_context,
+        "url": url,
         "customer_id": customer_id
     }
     if optional_pdf_path:
@@ -339,6 +350,11 @@ elif task == "Kampagnenplanung":
     ziel = st.text_input("🎯 Kampagnenziel")
     produkt = st.text_input("📦 Produkt/Dienstleistung")
     zeitraum = st.text_input("🕒 Zeitraum")
+    combined_context = (customer_memory + "\n\n" + context).strip()
+    if not ziel and not produkt and not combined_context:
+        st.error("❗ Bitte gib mindestens Ziel, Produkt oder Kontext an – sonst kein Start.")
+        st.stop()
+
     params = {
         "task": task_id,
         "ziel": ziel,
@@ -350,21 +366,34 @@ elif task == "Kampagnenplanung":
     if optional_pdf_path:
         params["pdf_path"] = optional_pdf_path
 
+    # 🚨 Eingabe-Validierung für Kampagnenplanung
+    if not ziel and not produkt and not customer_memory.strip() and not context.strip():
+        st.error("❗ Bitte gib mindestens ein Kampagnenziel, Produkt oder Kontext ein – sonst kein Start.")
+        st.stop()
+
+
 elif task == "Landingpage Strategie":
     task_id = "landingpage_strategy"
+
     if not url:
         st.error("❗ Verpflichtende URL angeben.")
         st.stop()
+
     zielgruppe = st.text_input("👥 Zielgruppe")
     angebot = st.text_input("💡 Angebot")
+
+    # Fallback wenn keine Zielgruppe angegeben
+    zielgruppe_final = zielgruppe.strip() or "Zielgruppe noch nicht definiert"
+
     params = {
         "task": task_id,
-        "zielgruppe": zielgruppe,
+        "zielgruppe": zielgruppe_final,
         "angebot": angebot,
         "url": url,
         "text": customer_memory + "\n\n" + context,
         "customer_id": customer_id
     }
+
     if optional_pdf_path:
         params["pdf_path"] = optional_pdf_path
 
@@ -374,6 +403,10 @@ elif task == "Monatsreport":
     import re
     if monat and not re.match(r"^\d{4}-\d{2}$", monat):
         st.error("❗ Bitte gib das Monat-Format korrekt an (z. B. 2024-07).")
+        st.stop()
+    combined_context = (customer_memory + "\n\n" + context).strip()
+    if not combined_context:
+        st.error("❗ Bitte gib Text, URL oder Kundenkontext an – der Monatsreport benötigt Inhalt.")
         st.stop()
     params = {
         "task": task_id,
@@ -386,17 +419,28 @@ elif task == "Monatsreport":
 
 elif task == "Marketingmaßnahmen planen":
     task_id = "tactical_actions"
-    ziel = st.text_input("🎯 Ziel")
+    ziel = st.text_input("🎯 Ziel der Maßnahmen")
     zeitfenster = st.text_input("🗓️ Zeitraum")
+
+    combined_context = (customer_memory + "\n\n" + context).strip()
+    if not ziel and not zeitfenster and not combined_context:
+        st.error("❗ Bitte gib mindestens Ziel, Zeitraum oder Kontext an.")
+        st.stop()
+
     params = {
         "task": task_id,
-        "ziel": ziel,
-        "zeitfenster": zeitfenster,
-        "text": customer_memory + "\n\n" + context,
+        "ziel": ziel.strip() or "Nicht angegeben",
+        "zeitfenster": zeitfenster.strip() or "Nicht definiert",
+        "text": combined_context,
         "customer_id": customer_id
     }
     if optional_pdf_path:
         params["pdf_path"] = optional_pdf_path
+
+
+    st.markdown("### 🚀 Agentenlauf manuell starten")
+    if st.button("Agent starten"):
+        st.session_state.start_agent = True
 
 # -------------------------------
 # Externe Datenquellen (automatisch vs. manuell)
@@ -493,7 +537,7 @@ if params.get("use_auto_sources") and not st.session_state.get("themen_bestaetig
 # -------------------------------
 # Initialer Agent-Call
 # -------------------------------
-if (not params.get("use_auto_sources")) or st.session_state.get("themen_bestaetigt"):
+if ((not params.get("use_auto_sources")) or st.session_state.get("themen_bestaetigt")) and st.session_state.start_agent:
 
     clar = {}  # Rückfragen-Parameter initialisieren
 
@@ -515,6 +559,7 @@ if (not params.get("use_auto_sources")) or st.session_state.get("themen_bestaeti
         st.session_state.questions = result.get("questions", [])
         st.session_state.conv_id = result.get("conversation_id")
         st.session_state.themen_bestaetigt = False  # zurücksetzen für zukünftige Runs
+        st.session_state.start_agent = False
 
     # Logging des Runs
     log_event({
