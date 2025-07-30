@@ -426,19 +426,6 @@ Zusätzliche Daten:
 Aktuelle Branchentrends (RSS): {rss_snippets}
 Google Trends: {trends_insights}
 
-
-Antwortstruktur:
-- Keywords & Suchintention:
-- Nutzerfokus (AIO, GEO, AEO):
-- SERP-Analyse & Snippet-Potenzial:
-- Relevanz aktueller Branchentrends:
-- Struktur & Lesbarkeit:
-- Meta-Daten & CTA:
-- Accessibility & Technik:
-- Lokale Relevanz:
-- Strategische Empfehlungen:
-"""
-
 Struktur der Analyse:
 
 1. Meta & Snippet-Optimierung:
@@ -475,7 +462,6 @@ Struktur der Analyse:
 
 8. Lokale SEO-Optimierung:
 
-
 Antwortstruktur:
 - SEO-Fokus & Hauptthema:
 - Meta-Elemente:
@@ -485,6 +471,7 @@ Antwortstruktur:
 - UX & Lesefluss:
 - Marktbezug & Trendchancen:
 - Lokales SEO
+- Nutzerfokus (AIO, GEO, AEO):
 - Priorisierte Optimierungsvorschläge:
 """
 
@@ -561,14 +548,6 @@ Kategorien:
 10. Strategische Roadmap
 11. Trend-Relevanz & Marktpotenzial (Trends, RSS, DESTATIS)
 
-### Antwortstruktur:
-- Meta-Title (max. 60 Zeichen):
-- Meta-Description (max. 155 Zeichen):
-- Keyword-Abdeckung & Cluster:
-- E-E-A-T-Stärkung:
-- Vorschläge für A/B-Tests oder Varianten:
-"""
-
 Antwortstruktur:
 === ZIELSEITE: {focus_url} ===
 - Keywords & Suchintention:
@@ -632,16 +611,6 @@ Analysebereiche:
 6. Lokales SEO (NAP, Standortdaten, GMaps, Schema.localBusiness)
 7. SEO für LLMs: AEO (Answer), GEO (Entities), AIO (Intent)
 7. Empfehlungen mit Priorisierung
-
-Antwortstruktur:
-- SEO-Score & Gesamturteil:
-- Positive SEO-Signale:
-- Kritische Schwächen (mit Ursachen):
-- Technische SEO-Hinweise:
-- Priorisierte Optimierungsschritte:
-- Langfristige Empfehlungen (für nachhaltiges Ranking):
-"""
-
 
 Antwortstruktur:
 === TECHNISCHE BEWERTUNG PRO SEITE ===
@@ -722,7 +691,6 @@ Antwortstruktur:
 - Trendrelevanz & Marktanpassungen:
 - Lokaler Kontext:
 - Bonus: KI-Einsatz / Automatisierungsideen:
-
 """
 
 # 10. Taktische Maßnahmen
@@ -744,7 +712,6 @@ Antwortstruktur:
 - Offline-Materialien:
 - KI-Integration & Automatisierung:
 """
-
 
 tactical_actions_prompt_deep = """
 Du bist erfahrener Performance-Stratege. Leite aus dem folgenden Input konkrete, priorisierte Taktiken ab, die direkt in Maßnahmen überführt werden können (ein realistischer, priorisierter Maßnahmenplan).
