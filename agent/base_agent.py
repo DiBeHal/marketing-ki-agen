@@ -26,12 +26,18 @@ from agent.prompts import (
     monthly_report_prompt_fast, monthly_report_prompt_deep,
     tactical_actions_prompt_fast, tactical_actions_prompt_deep
 )
+
+from agent.prompts import (
+    alt_tag_writer_prompt_fast, alt_tag_writer_prompt_deep
+)
+
 from agent.clarifier import extract_questions_from_response, merge_clarifications
 from agent.tools.lighthouse_runner import run_lighthouse
 from agent.loader import load_html, extract_seo_signals, load_pdf
 from agent.customer_memory import load_customer_memory
 from agent.activity_log import log_event
 from agent.tools.ads_scraper import scrape_facebook_ads, scrape_google_ads, scrape_linkedin_ads
+from agent.tools.alt_tag_helper import extract_images_from_url
 
 # ===== LangChain LLM mit Token-Limit =====
 llm = ChatOpenAI(model="gpt-4o", max_tokens=3000)
@@ -335,6 +341,38 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
                 if reasoning_mode == "fast"
                 else tactical_actions_prompt_deep)
         prompt = tmpl.format(context=ctx)
+
+elif task == "alt_tag_writer":
+    url = kwargs.get("url", "")
+    branche = kwargs.get("branche", "")
+    zielgruppe = kwargs.get("zielgruppe", "")
+    text = kwargs.get("text", "")
+
+    image_data = extract_images_from_url(url)
+    if isinstance(image_data, list):
+        img_context_lines = []
+        for idx, img in enumerate(image_data[:13], 1):
+            img_context_lines.append(f"Bild {idx}: {img['src']}")
+            if img["context"]:
+                img_context_lines.append(f"Kontext: {img['context']}")
+        image_context = "\n".join(img_context_lines)
+    else:
+        image_context = f"[Fehler beim Laden der Bilder: {image_data.get('error')}]"
+
+    from agent.prompts import alt_tag_writer_prompt_fast, alt_tag_writer_prompt_deep
+
+    tmpl = alt_tag_writer_prompt_fast if reasoning_mode == "fast" else alt_tag_writer_prompt_deep
+
+    prompt = tmpl.format(
+        url=url,
+        branche=branche,
+        zielgruppe=zielgruppe,
+        text=text,
+        image_context=image_context
+    )
+
+    result = call_llm(prompt)
+    return {"response": result, "prompt_used": prompt}
 
     elif task == "extract_topics":
         # Für automatische Themenvorschläge (RSS/Trends/DESTATIS)

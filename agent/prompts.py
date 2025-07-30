@@ -774,3 +774,60 @@ SWOT-Analyse:
 - Chancen:
 - Risiken:
 """
+
+alt_tag_writer_prompt_fast = """
+Du bist ein SEO-Experte. Deine Aufgabe ist es, aussagekräftige und suchmaschinenoptimierte Alt-Texte für alle Bilder auf einer Webseite zu erstellen.
+
+### Kontext:
+Die Seite gehört zu einem Unternehmen in folgendem Bereich:
+Branche: {branche}
+Zielgruppe: {zielgruppe}
+
+### Aufgabe:
+- Analysiere alle Bilder auf der angegebenen URL ({url})
+- Berücksichtige den umgebenden Text, Seitentitel, Bildquelle und den Gesamtzweck der Seite
+- Gib für **jedes Bild zwei alternative Alt-Text-Varianten**
+- Alt-Texte sollen:
+    - die Zielgruppe ansprechen
+    - Keywords sinnvoll enthalten
+    - semantisch korrekt und natürlich klingen
+    - max. 125 Zeichen lang sein
+
+### Bilddaten (automatisch extrahiert):
+{image_context}
+
+### Ausgabeformat:
+Bild 1:
+- Variante A: ...
+- Variante B: ...
+
+Bild 2:
+- Variante A: ...
+- Variante B: ...
+
+Beginne jetzt.
+"""
+
+alt_tag_writer_prompt_deep = """
+Du bist ein fortgeschrittener SEO-Agent, spezialisiert auf visuelle Zugänglichkeit und Suchmaschinenoptimierung. Analysiere alle Bilder auf folgender Webseite ({url}) und erstelle **pro Bild zwei Alt-Text-Vorschläge**, abgestimmt auf:
+
+- Unternehmenskontext: {branche}
+- Zielgruppe: {zielgruppe}
+- Zusatzkontext/Text: {text}
+
+Berücksichtige:
+- Bildinhalte & -position
+- semantische Umgebung (Text, HTML-Struktur)
+- SEO-relevante Begriffe
+- Zugänglichkeit (für Screenreader)
+
+### Bilddaten (automatisch extrahiert):
+{image_context}
+
+### Format:
+Bild 1:
+- Variante A: ...
+- Variante B: ...
+
+Gib klare, sinnvolle und präzise Alt-Beschreibungen.
+"""

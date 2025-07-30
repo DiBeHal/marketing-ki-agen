@@ -204,6 +204,7 @@ task = st.selectbox("Wähle eine Aufgabe:", [
     "Landingpage Strategie",
     "Monatsreport",
     "Marketingmaßnahmen planen"
+    "Alt-Tag Generator"
 ])
 
 # Reset bei Task- oder Modus-Wechsel
@@ -441,6 +442,32 @@ elif task == "Marketingmaßnahmen planen":
         params["pdf_path"] = optional_pdf_path
 
 
+elif task == "Alt-Tag Generator":
+    task_id = "alt_tag_writer"
+
+    st.markdown("🔍 Beschreibt automatisch alle Bilder einer Webseite mit SEO-relevanten Alt-Tags.")
+
+    url = st.text_input("🌐 Website-URL (Pflicht)", placeholder="https://www.beispielseite.de")
+    zielgruppe = st.text_input("👥 Zielgruppe (optional)", placeholder="z. B. Frauen 30–50, lokal interessiert")
+    branche = st.text_input("🏢 Branche / Produktfeld (optional)", placeholder="z. B. Kosmetikstudio, Bäckerei, Anwaltskanzlei")
+    kontexttext = st.text_area("📄 Optionaler Kontexttext oder Beschreibung", height=150)
+
+    if not url:
+        st.error("❗ Bitte gib eine gültige Website-URL an.")
+        st.stop()
+
+    params = {
+        "task": task_id,
+        "url": url,
+        "zielgruppe": zielgruppe,
+        "branche": branche,
+        "text": customer_memory + "\n\n" + kontexttext,
+        "customer_id": customer_id
+    }
+
+    if optional_pdf_path:
+        params["pdf_path"] = optional_pdf_path
+
     st.markdown("### 🚀 Agentenlauf manuell starten")
     if st.button("Agent starten"):
         st.session_state.start_agent = True
@@ -449,20 +476,19 @@ elif task == "Marketingmaßnahmen planen":
 # Externe Datenquellen (automatisch vs. manuell)
 # -------------------------------
 
-# Bedingungen für automatische Themenquellen
 show_sources = (
     mode == "deep" or (mode == "fast" and task == "Content Writing")
 )
-params["use_auto_sources"] = show_sources
-use_sources = False
+
 rss_input = trend_input = destatis_input = ""
+params["use_auto_sources"] = False  # Standardwert
 
 if show_sources:
     st.markdown("---")
     st.subheader("🌐 Themenbasierte externe Datenquellen")
 
     use_sources = st.checkbox("🔍 Automatische Themenvorschläge verwenden?", value=True)
-    params["use_auto_sources"] = use_sources  # 👉 Immer setzen, nicht nur bei else
+    params["use_auto_sources"] = use_sources  # Nur hier setzen
 
     if not use_sources:
         rss_input = st.text_area("📡 RSS-Feed URLs (eine pro Zeile)", height=100)
@@ -484,6 +510,7 @@ if show_sources:
         ]:
             params["destatis_queries"] = destatis_queries_list
 
+
 # -------------------------------
 # Initialer Agent-Call
 # -------------------------------
@@ -493,10 +520,23 @@ clar = {}  # Initialisiere Rückfragen-Parameter
 # Themenvorschlag + Bestätigung
 # -------------------------------
 
-if params.get("use_auto_sources") and not st.session_state.get("themen_bestaetigt"):
+# Sicherheits-Initialisierung
+if "params" not in locals():
+    params = {}
+params.setdefault("use_auto_sources", False)
+
+if "themen_bestaetigt" not in st.session_state:
+    st.session_state["themen_bestaetigt"] = False
+
+# Optional: Debug anzeigen
+# st.warning(f"DEBUG: use_auto_sources={params.get('use_auto_sources')} | themen_bestaetigt={st.session_state.get('themen_bestaetigt')}")
+
+# Nur anzeigen, wenn automatische Themen aktiviert & noch nicht bestätigt
+if params.get("use_auto_sources") and not st.session_state["themen_bestaetigt"]:
 
     st.info("🤖 Der Agent extrahiert automatisch relevante Themen für externe Datenquellen…")
 
+    # Grundlage für Themenvorschlag
     theme_text = " ".join([
         params.get("thema", ""),
         params.get("zielgruppe", ""),
@@ -517,11 +557,14 @@ if params.get("use_auto_sources") and not st.session_state.get("themen_bestaetig
         st.write("DEBUG: extract_result:", extract_result)
         st.stop()
 
-    proposed_topics = [line.strip("• ").strip() for line in extract_result["response"].splitlines() if line.strip()]
+    # Liste der Themen extrahieren
+    suggested_topics_raw = extract_result["response"]
+    proposed_topics = [line.strip("• ").strip() for line in suggested_topics_raw.splitlines() if line.strip()]
 
     st.session_state.auto_topics = proposed_topics
     st.session_state.final_topics = proposed_topics
 
+    # Eingabe zur Bearbeitung durch User
     st.markdown("### 🧠 Themenvorschlag des Agenten:")
     editable_topics = st.text_area(
         "✏️ Bearbeite oder lösche die vorgeschlagenen Themen (ein Thema pro Zeile):",
@@ -530,6 +573,7 @@ if params.get("use_auto_sources") and not st.session_state.get("themen_bestaetig
         key="editable_topics"
     )
 
+    # Übernehmen-Button
     if st.button("✅ Themen übernehmen und starten", key="confirm_edit"):
         user_topics = [line.strip() for line in editable_topics.splitlines() if line.strip()]
         if not user_topics:
@@ -537,7 +581,7 @@ if params.get("use_auto_sources") and not st.session_state.get("themen_bestaetig
             st.stop()
         else:
             params["topic_keywords"] = user_topics
-            st.session_state.themen_bestaetigt = True
+            st.session_state["themen_bestaetigt"] = True
             st.rerun()
 
 
