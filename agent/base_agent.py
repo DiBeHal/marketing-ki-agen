@@ -39,6 +39,7 @@ from agent.activity_log import log_event
 from agent.tools.ads_scraper import scrape_facebook_ads, scrape_google_ads, scrape_linkedin_ads
 from agent.tools.alt_tag_helper import extract_images_from_url
 from agent.tools.google_search import find_competitor_sites
+from agent.tools.memory_store import save_to_memory, search_memory
 
 # ===== LangChain LLM mit Token-Limit =====
 llm = ChatOpenAI(model="gpt-4o", max_tokens=3000)
@@ -415,6 +416,14 @@ Diese sollen sich für weitere Recherche in Google Trends, RSS-News oder DESTATI
 Text:
 {txt}
 """
+    elif task == "memory_write":
+        save_to_memory([kwargs.get("text", "")])
+        return {"response": "✅ Wissen gespeichert."}
+
+    elif task == "memory_search":
+        hits = search_memory(kwargs.get("query", ""))
+        return {"response": "\n\n".join([doc.page_content for doc in hits])}
+
     else:
         raise ValueError(f"Unbekannter Task: {task}")
 

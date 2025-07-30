@@ -192,6 +192,38 @@ st.header("🎯 Marketing-Tasks mit KI-Agent")
 mode_label = st.radio("Modus wählen:", ["⚡ Schnell", "🧠 Tiefenanalyse"], horizontal=True)
 mode = "fast" if mode_label == "⚡ Schnell" else "deep"
 
+# ---------------------------------------
+# 🧠 Gedächtnis-Verwaltung (FAISS)
+# ---------------------------------------
+with st.expander("🧠 Gedächtnis-Verwaltung (FAISS)", expanded=False):
+    memory_col1, memory_col2 = st.columns(2)
+
+    with memory_col1:
+        if st.button("📥 Wissen speichern"):
+            try:
+                response = run_agent(
+                    task="memory_write",
+                    reasoning_mode=mode,
+                    text=params.get("text", "")
+                )
+                st.success(response["response"])
+            except Exception as e:
+                st.error(f"Fehler beim Speichern: {e}")
+
+    with memory_col2:
+        query = st.text_input("🔍 Gedächtnis durchsuchen", "")
+        if query:
+            try:
+                response = run_agent(
+                    task="memory_search",
+                    reasoning_mode=mode,
+                    query=query
+                )
+                st.info("Suchergebnisse:")
+                st.write(response["response"])
+            except Exception as e:
+                st.error(f"Fehler bei der Suche: {e}")
+
 task = st.selectbox("Wähle eine Aufgabe:", [
     "–",
     "Content Analyse",
@@ -203,7 +235,7 @@ task = st.selectbox("Wähle eine Aufgabe:", [
     "Kampagnenplanung",
     "Landingpage Strategie",
     "Monatsreport",
-    "Marketingmaßnahmen planen"
+    "Marketingmaßnahmen planen",
     "Alt-Tag Generator"
 ])
 
@@ -624,12 +656,9 @@ if ((not params.get("use_auto_sources")) or st.session_state.get("themen_bestaet
             reasoning_mode=mode,
             conversation_id=st.session_state.get("conv_id"),
             clarifications=clar,
-            zielgruppe=params_for_agent.get("zielgruppe", ""),
-            branche=params_for_agent.get("branche", ""),
-            text=params_for_agent.get("text", ""),
-            url=params_for_agent.get("url", ""),
-            **params_for_agent
+            **params_for_agent  # enthält bereits alle nötigen Parameter
         )
+
 
 
         # Zwischenspeichern der Ergebnisse

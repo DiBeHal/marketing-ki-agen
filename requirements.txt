@@ -7,6 +7,7 @@ pydantic
 python-dotenv
 loguru
 python-multipart
+faiss-cpu
 
 # ----------------------------------------
 # 🔍 Scraping & HTML-Handling
