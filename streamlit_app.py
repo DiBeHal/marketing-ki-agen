@@ -648,8 +648,11 @@ if ((not params.get("use_auto_sources")) or st.session_state.get("themen_bestaet
     params_for_agent["context"]        = params_for_agent["text"] 
     params_for_agent["url"]            = (params.get("url") or "").strip()
     params_for_agent["thema"]          = (params.get("thema") or "").strip()
+    params_for_agent["keywords"] = ", ".join(params.get("topic_keywords") or [])
     params_for_agent["topic_keywords"] = params.get("topic_keywords") or []
     params_for_agent["customer_id"]    = (params.get("customer_id") or "").strip()
+    params_for_agent["ziel"]     = (params.get("ziel") or "").strip()
+    params_for_agent["angebot"]  = (params.get("angebot") or "").strip()
 
     with st.spinner("🧠 Der Agent denkt nach…"):
         result = run_agent(

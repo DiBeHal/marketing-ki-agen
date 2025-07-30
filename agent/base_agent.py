@@ -307,17 +307,19 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
         except Exception as e:
             lighthouse_data = f"[Fehler: {e}]"
 
+        # 🧠 Kontexttext für den Prompt ergänzen (aus Text, URL oder Customer Memory)
+        ctx = get_context_from_text_or_url(kwargs.get("text", ""), url, kwargs.get("customer_id"))
+
         tmpl = seo_lighthouse_prompt_fast if reasoning_mode == "fast" else seo_lighthouse_prompt_deep
         prompt = tmpl.format(
+            context=ctx,
             url=url,
             zielgruppe=zielgruppe,
             thema=thema,
             lighthouse_data=lighthouse_data
         )
-
         result = call_llm(prompt)
         return {"response": result, "prompt_used": prompt}
-
 
     elif task == "landingpage_strategy":
         url = kwargs.get("url", "")
@@ -401,7 +403,8 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
             image_context=image_context
         )
 
-        result = call_llm(prompt)
+        resp = llm.invoke(prompt)
+        result = resp.content if hasattr(resp, "content") else str(resp)
         return {"response": result, "prompt_used": prompt}
 
     elif task == "extract_topics":
