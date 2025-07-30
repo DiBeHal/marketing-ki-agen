@@ -487,7 +487,9 @@ clar = {}  # Initialisiere Rückfragen-Parameter
 # -------------------------------
 # Themenvorschlag + Bestätigung
 # -------------------------------
-if params.get("use_auto_sources") and not st.session_state.get("themen_bestaetigt"):
+st.warning(f"DEBUG: use_auto_sources={params.get('use_auto_sources')} | themen_bestaetigt={st.session_state.get('themen_bestaetigt')}")
+
+if "use_auto_sources" in params and not st.session_state.get("themen_bestaetigt"):
     st.info("🤖 Der Agent extrahiert automatisch relevante Themen für externe Datenquellen…")
 
     theme_text = " ".join([
