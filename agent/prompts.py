@@ -22,17 +22,17 @@ Eingabe (Text, Website-Auszug oder Kombination):
 {context}
 
 Zusätzliche Informationen:
-- 🔎 Branchentrends (RSS): {rss_snippets}
-- 📈 Google Trends: {trends_insights}
-- 🧮 Marktdaten (DESTATIS/Eurostat): {destatis_stats}
+- Branchentrends (RSS): {rss_snippets}
+- Google Trends: {trends_insights}
+- Marktdaten (DESTATIS/Eurostat): {destatis_stats}
 
 Antwortstruktur:
-- 👥 Zielgruppen-Segmente (Alter, Rolle, Bedarf):
-- 🎙️ Tonalität & Kommunikationsstil:
-- 🧩 Hauptbotschaften (max. 3 Bullet Points):
-- 💡 Erste Content-Ideen (je 1 Satz):
-- 📰 Relevante Trends & News:
-- 📊 Markt-Kennzahlen (falls vorhanden):
+- Zielgruppen-Segmente (Alter, Rolle, Bedarf):
+- Tonalität & Kommunikationsstil:
+- Hauptbotschaften (max. 3 Bullet Points):
+- Erste Content-Ideen (je 1 Satz):
+- Relevante Trends & News:
+- Markt-Kennzahlen (falls vorhanden):
 """
 
 content_analysis_prompt_deep = """
@@ -48,23 +48,23 @@ Eingabe (Text/Website-Kontext):
 {context}
 
 Externe Informationen:
-- 📰 Branchentrends (RSS): {rss_snippets}
-- 📈 Google Trends: {trends_insights}
-- 📊 Marktdaten (DESTATIS/Eurostat): {destatis_stats}
+- Branchentrends (RSS): {rss_snippets}
+- Google Trends: {trends_insights}
+- Marktdaten (DESTATIS/Eurostat): {destatis_stats}
 
 Antwortstruktur:
-- 👥 Zielgruppen-Segmente (inklsuive Pain-Points, Bedürfnisse, bevorzugte Kanäle; mit kurzen Begründungen):
-- 🎙️ Tonalität & Markenstil (inkl. Stilbeispiel):
-- 🧩 Hauptbotschaften (Top 3, je mit Nutzen-Begründung):
-- 🔍 SEO-Hinweise (Meta, Keywords, Snippet-Chancen, Interne Verlinkungstipps):
-- 🧠 Neue Content-Ideen (Thema + Format + Nutzen):
-- 🧱 Struktur- und Format-Tipps (H1-H3, Absätze, CTAs):
-- 📚 Lesbarkeitskommentar (kurz & praxisnah):
-- 📰 Relevante Trends & News (mit Bezug zur Marke):
+- Zielgruppen-Segmente (inklsuive Pain-Points, Bedürfnisse, bevorzugte Kanäle; mit kurzen Begründungen):
+- Tonalität & Markenstil (inkl. Stilbeispiel):
+- Hauptbotschaften (Top 3, je mit Nutzen-Begründung):
+- SEO-Hinweise (Meta, Keywords, Snippet-Chancen, Interne Verlinkungstipps):
+- Neue Content-Ideen (Thema + Format + Nutzen):
+- Struktur- und Format-Tipps (H1-H3, Absätze, CTAs):
+- Lesbarkeitskommentar (kurz & praxisnah):
+- Relevante Trends & News (mit Bezug zur Marke):
 - Vergleich mit Top-3 Google SERP (Welche Aspekte fehlen im Vergleich?):
-- 📊 Marktdaten & Chancen:
-- 📣 CTA - Wie kann man besser zum Ziel überleiten (inklusive konkreter Call-to-Action-Empfehlungen):
-- ✅ Optimierungsvorschläge (Bullet Points, priorisiert):
+- Marktdaten & Chancen:
+- CTA - Wie kann man besser zum Ziel überleiten (inklusive konkreter Call-to-Action-Empfehlungen):
+- Optimierungsvorschläge (Bullet Points, priorisiert):
 """
 
 # ===== Cluster 2: Content Writing =====
@@ -76,9 +76,9 @@ Tonalität: {tonalitaet}
 Thema: {thema}
 
 Zusätzliche Infos (optional):
-- 📰 Branchentrends: {rss_snippets}
-- 📈 Google Trends: {trends_insights}
-- 📊 Marktdaten: {destatis_stats}
+- Branchentrends: {rss_snippets}
+- Google Trends: {trends_insights}
+- Marktdaten: {destatis_stats}
 
 Vorgehen:
 - Starte mit einem einprägsamen Einstieg (Hook)
@@ -86,7 +86,7 @@ Vorgehen:
 - Schreibe aktiv, klar, überzeugend
 
 Abschnitt:  
-✍️ Artikeltext:
+Artikeltext:
 """
 
 content_write_prompt_deep = """
@@ -97,9 +97,9 @@ Tonalität: {tonalitaet}
 Thema: {thema}
 
 Externe Informationen (optional):
-- 📰 Branchentrends: {rss_snippets}
-- 📈 Google Trends: {trends_insights}
-- 📊 Marktdaten: {destatis_stats}
+- Branchentrends: {rss_snippets}
+- Google Trends: {trends_insights}
+- Marktdaten: {destatis_stats}
 
 Vorgehen:
 1. Zielgruppenanalyse (Bedürfnisse, Erwartungen, Kommunikationsstil)
@@ -113,12 +113,12 @@ Vorgehen:
 6. Abschluss mit Call-to-Action
 
 Antwortstruktur:
-- 👥 Zielgruppenprofil:
-- 🗂️ Gliederungsvorschlag (inkl. Überschriften):
-- ✍️ Artikeltext:
-- 🔍 SEO-Elemente:
-- 📌 Hook & Produkt-Überleitung:
-- 📣 Call-to-Action:
+- Zielgruppenprofil:
+- Gliederungsvorschlag (inkl. Überschriften):
+- Artikeltext:
+- SEO-Elemente:
+- Hook & Produkt-Überleitung:
+- Call-to-Action:
 """
 
 # ===== Cluster 3: Wettbewerbsanalyse =====
@@ -199,15 +199,15 @@ Aufgaben:
    - Quick Wins vs. langfristige Projekte
 
 Antwortstruktur:
-- 🧭 Positionierung (Claim, Zielgruppe, Nutzenversprechen, Themencluster & Content-Strategie):
-- ✅ Stärken & USPs (Website & Branding):
-- ⚠️ Schwächen & Risiken:
-- 💡 Verbesserungspotenziale:
-- 📊 Externe Präsenz (Artikel, Verzeichnisse, Social-Media):
-- 📰 Ads Insights:
-- 🔍 Neu identifizierte Mitbewerber (mit Begründung):
-- 📢 Abgrenzungspotenziale & Lücken:
-- 🚀 Empfohlene Maßnahmen (Quick Wins & Langfristiges):
+- Positionierung (Claim, Zielgruppe, Nutzenversprechen, Themencluster & Content-Strategie):
+- Stärken & USPs (Website & Branding):
+- Schwächen & Risiken:
+- Verbesserungspotenziale:
+- Externe Präsenz (Artikel, Verzeichnisse, Social-Media):
+- Ads Insights:
+- Neu identifizierte Mitbewerber (mit Begründung):
+- Abgrenzungspotenziale & Lücken:
+- Empfohlene Maßnahmen (Quick Wins & Langfristiges):
 """
 
 # ===== Cluster 4: Kampagnen =====
@@ -222,7 +222,7 @@ Tonalität: {tonalitaet}
 Thema: {thema}
 
 Zusätzliche Hinweise:
-- 📰 Branchentrends: {rss_snippets}
+- Branchentrends: {rss_snippets}
 
 Ziele:
 - Zielgruppe & USPs identifzieren
@@ -279,18 +279,18 @@ Schritte:
    - A/B-Test-Vorschläge
 
 Antwortstruktur:
-- 👥 Zielgruppen-Segmente:
-- ✨ USP / Produktbotschaft:
-- 📢 Kanäle, Formate & Budget:
-- 🔹 Kampagnenidee & Story:
-- 🖋️ Text- & Teaser-Ideen:
-- 🖼️ Asset-Vorschläge:
-- ⏱ Zeitplan / Staffelung:
-- 📊 KPI-Empfehlungen:
-- 🔬 A/B-Test-Plan:
-- 📰 Branchentrends & News:
-- 📈 Marktkennzahlen:
-- 🔗 Call to Action:
+- Zielgruppen-Segmente:
+- USP / Produktbotschaft:
+- Kanäle, Formate & Budget:
+- Kampagnenidee & Story:
+- Text- & Teaser-Ideen:
+- Asset-Vorschläge:
+- Zeitplan / Staffelung:
+- KPI-Empfehlungen:
+- A/B-Test-Plan:
+- Branchentrends & News:
+- Marktkennzahlen:
+- Call to Action:
 """
 
 # ===== Cluster 5: Landingpage =====
@@ -303,22 +303,22 @@ Ziel: Maximale Relevanz, Klarheit und Conversion-Optimierung
 Aktueller Inhalt der Landingpage:
 {context_website}
 
-- 👥 Zielgruppe: {zielgruppe}
-- 🎯 Ziel: {ziel}
-- 🧵 Kontext (Kampagne, Produkt, Trigger): {thema}
+- Zielgruppe: {zielgruppe}
+- Ziel: {ziel}
+- Kontext (Kampagne, Produkt, Trigger): {thema}
 
 Strukturierte Antwort (kurz & präzise):
 
-- 🧠 Erste Impression / Headline-Idee:
+- Erste Impression / Headline-Idee:
 - Eine Gliederung der Seite
-- ✨ Nutzenversprechen (USP, Value Proposition):
-- 📄 Empfohlene Sections (H1-H3 Struktur):
-- 🔍 Vertrauen & Beweise (z. B. Social Proof, Zertifikate):
-- 🎯 Call-to-Action (Text & Platzierung):
-- 🎨 Stil-Tipps (Farben, Bilder, Icons):
-- 🖼️ Asset-Vorschläge (Grafiken, Videos, Infografiken):
-- 📱 Mobile-Optimierungshinweise:
-- 🧭 UX-Tipp zur Scrollführung oder Friction-Punkten:
+- Nutzenversprechen (USP, Value Proposition):
+- Empfohlene Sections (H1-H3 Struktur):
+- Vertrauen & Beweise (z. B. Social Proof, Zertifikate):
+- Call-to-Action (Text & Platzierung):
+- Stil-Tipps (Farben, Bilder, Icons):
+- Asset-Vorschläge (Grafiken, Videos, Infografiken):
+- Mobile-Optimierungshinweise:
+- UX-Tipp zur Scrollführung oder Friction-Punkten:
 """
 
 
@@ -328,14 +328,14 @@ Du bist Conversion-Experte mit Fokus auf High-Performance-Landingpages. Entwickl
 Landingpage-URL oder Inhalt:
 {context_website}
 
-- 👥 Zielgruppe: {zielgruppe}
-- 🎯 Ziel: {ziel}
-- 🧵 Kontext (Produkt, Dienstleistung, Kampagnenziel): {thema}
+- Zielgruppe: {zielgruppe}
+- Ziel: {ziel}
+- Kontext (Produkt, Dienstleistung, Kampagnenziel): {thema}
 
 Ergänzende Informationen:
-- 📰 Branchentrends: {rss_snippets}
-- 📈 Suchtrends: {trends_insights}
-- 📊 Marktkennzahlen: {destatis_stats}
+- Branchentrends: {rss_snippets}
+- Suchtrends: {trends_insights}
+- Marktkennzahlen: {destatis_stats}
 
 ### Schritte:
 
@@ -367,16 +367,16 @@ Ergänzende Informationen:
 
 ### Antwortstruktur:
 
-- 👤 Zielgruppen-Insights:
-- 💬 Headline + Hook-Idee:
-- 💎 Nutzenversprechen / USP:
-- 📄 Strukturvorschlag (Abschnitte):
-- 🔒 Trust-Elemente:
-- 🖋️ Text-Tipps (CTA, Abschnitt 1-3):
-- 🎨 Asset- und Bildideen:
-- 🔗 CTA-Vorschläge & Platzierung:
-- 📱 Mobile-Optimierung & UX-Hinweise:
-- 🧪 Konversions-Booster oder A/B-Test-Vorschläge:
+- Zielgruppen-Insights:
+- Headline + Hook-Idee:
+- Nutzenversprechen / USP:
+- Strukturvorschlag (Abschnitte):
+- Trust-Elemente:
+- Text-Tipps (CTA, Abschnitt 1-3):
+- Asset- und Bildideen:
+- CTA-Vorschläge & Platzierung:
+- Mobile-Optimierung & UX-Hinweise:
+- Konversions-Booster oder A/B-Test-Vorschläge:
 """
 
 # ===== Cluster 6: SEO Inhalte =====
@@ -384,7 +384,7 @@ Ergänzende Informationen:
 seo_audit_prompt_fast = """
 Du bist SEO-Experte. Führe ein kompaktes SEO-Audit der folgenden Seite durch:
 
-🔗 URL oder Textinhalt:  
+URL oder Textinhalt:  
 {context}
 
 Schwerpunkte deiner Analyse:
@@ -407,12 +407,12 @@ Schwerpunkte deiner Analyse:
 5. CTA & Zielerreichungs-Analyse
 
 Antwortstruktur:
-- 🔍 Fokus-Thema:
-- 🏷️ Meta-Optimierung:
-- 🔑 Keyword-Chancen:
-- 📄 Content-Feedback:
-- 🧭 Struktur- & UX-Hinweise:
-- 🧠 Verbesserungsideen:
+- Fokus-Thema:
+- Meta-Optimierung:
+- Keyword-Chancen:
+- Content-Feedback:
+- Struktur- & UX-Hinweise:
+- Verbesserungsideen:
 """
 
 seo_audit_prompt_deep = """
@@ -422,20 +422,20 @@ Die Inhalte stammen aus mehreren Seiten der Domain (Startseite + wichtige Unters
 {contexts_combined}
 
 Zusätzliche Daten:
-📰 Aktuelle Branchentrends (RSS): {rss_snippets}
-📈 Google Trends: {trends_insights}
+Aktuelle Branchentrends (RSS): {rss_snippets}
+Google Trends: {trends_insights}
 
 
 Antwortstruktur:
-- 🔍 Keywords & Suchintention:
-- 🧠 Nutzerfokus (AIO, GEO, AEO):
-- 📊 SERP-Analyse & Snippet-Potenzial:
-- 📰 Relevanz aktueller Branchentrends:
-- 🏧 Struktur & Lesbarkeit:
-- 📜 Meta-Daten & CTA:
-- ♿ Accessibility & Technik:
-- 📍 Lokale Relevanz:
-- 💡 Strategische Empfehlungen:
+- Keywords & Suchintention:
+- Nutzerfokus (AIO, GEO, AEO):
+- SERP-Analyse & Snippet-Potenzial:
+- Relevanz aktueller Branchentrends:
+- Struktur & Lesbarkeit:
+- Meta-Daten & CTA:
+- Accessibility & Technik:
+- Lokale Relevanz:
+- Strategische Empfehlungen:
 """
 
 Struktur der Analyse:
@@ -476,15 +476,15 @@ Struktur der Analyse:
 
 
 Antwortstruktur:
-- 🔎 SEO-Fokus & Hauptthema:
-- 🏷️ Meta-Elemente:
-- 🔑 Keyword-Chancen:
-- 📄 Content-Stärken & Schwächen:
-- 🧱 Struktur- und Formatkritik:
-- 👁️ UX & Lesefluss:
-- 📊 Marktbezug & Trendchancen:
+- SEO-Fokus & Hauptthema:
+- Meta-Elemente:
+- Keyword-Chancen:
+- Content-Stärken & Schwächen:
+- Struktur- und Formatkritik:
+- UX & Lesefluss:
+- Marktbezug & Trendchancen:
 - Lokales SEO
-- ✅ Priorisierte Optimierungsvorschläge:
+- Priorisierte Optimierungsvorschläge:
 """
 
 # 7. SEO-Optimierung
@@ -509,19 +509,19 @@ Ziel:
 
 Antwortstruktur:
 === ZIELSEITE ===
-- ✍️ Keywords:
+- Keywords:
 - Überarbeiteter Text:
-- 🏗️ Struktur & H-Tags:
-- 📜 Meta-Daten:
-- 📣 CTAs:
-- ⚙️ Technisches SEO:
-- 📄 Verbesserungshinweise (stichpunktartig):
+- Struktur & H-Tags:
+- Meta-Daten:
+- CTAs:
+- Technisches SEO:
+- Verbesserungshinweise (stichpunktartig):
 
 === ANDERE UNTERSEITEN (generelle Tipps) ===
-- 🔗 Interne Verlinkung:
-- 🧭 Allgemeine Content-Tipps:
-- 📍 Lokale Hinweise:
-- 📄 Verbesserungshinweise (stichpunktartig):
+- Interne Verlinkung:
+- Allgemeine Content-Tipps:
+- Lokale Hinweise:
+- Verbesserungshinweise (stichpunktartig):
 """
 
 seo_optimization_prompt_deep = """
@@ -548,24 +548,24 @@ Kontext:
 7. Optionale Trendintegration
 
 Kategorien:
-1. 🔍 Keywords & Suchintention
-2. ✍️ Textqualität & Stil
-3. 🏗️ Struktur & H-Tags
-4. 📜 Meta-Daten & Snippets
-5. 📣 CTA & Conversion
-6. ⚙️ Technische SEO (Lighthouse)
-7. 🔗 Interne Verlinkung
-8. 🗂️ Unterseiten-Strategie
-9. 📍 Lokales SEO
-10. 🧭 Strategische Roadmap
-11. 🧠 Trend-Relevanz & Marktpotenzial (Trends, RSS, DESTATIS)
+1. Keywords & Suchintention
+2. Textqualität & Stil
+3. Struktur & H-Tags
+4. Meta-Daten & Snippets
+5. CTA & Conversion
+6. Technische SEO (Lighthouse)
+7. Interne Verlinkung
+8. Unterseiten-Strategie
+9. Lokales SEO
+10.Strategische Roadmap
+11.Trend-Relevanz & Marktpotenzial (Trends, RSS, DESTATIS)
 
 ### Antwortstruktur:
-- 🏷️ Meta-Title (max. 60 Zeichen):
-- 📝 Meta-Description (max. 155 Zeichen):
-- 🔍 Keyword-Abdeckung & Cluster:
-- 🧠 E-E-A-T-Stärkung:
-- 🧪 Vorschläge für A/B-Tests oder Varianten:
+- Meta-Title (max. 60 Zeichen):
+- Meta-Description (max. 155 Zeichen):
+- Keyword-Abdeckung & Cluster:
+- E-E-A-T-Stärkung:
+- Vorschläge für A/B-Tests oder Varianten:
 """
 
 Antwortstruktur:
@@ -579,10 +579,10 @@ Antwortstruktur:
 - Andere Verbesserungsvorschläge:
 
 === GENERELLE TIPPS FÜR ANDERE SEITEN ===
-- 🔗 Interne Verlinkung:
-- 🧭 Allgemeine Content-Tipps:
-- 📍 Lokale Hinweise:
-- 📄 Verbesserungshinweise (stichpunktartig):
+- Interne Verlinkung:
+- Allgemeine Content-Tipps:
+- Lokale Hinweise:
+- Verbesserungshinweise (stichpunktartig):
 """
 
 # ===== Cluster 8: Technisches SEO =====
@@ -599,13 +599,13 @@ Lighthouse-Daten (SEO-Sektion):
 {lighthouse_data}
 
 Antwortstruktur:
-- 📊 SEO-Score: (Numerischer Wert + Kurzbewertung)
-- ✅ Stärken der Seite (3 Bullet Points):
-- ⚠️ Schwächen & Empfehlungen (max. 5 Bullet Points):
-- 🧩 Technische Hinweise (falls relevant, z. B. Meta, Hreflang, Indexierung):
-- 📍 Lokales SEO-Check:
-- 🤖 SEO-LLM-Kriterien (AEO, GEO, AIO):
-- 🧭 Nächste Schritte (konkret & priorisiert):
+- SEO-Score: (Numerischer Wert + Kurzbewertung)
+- Stärken der Seite (3 Bullet Points):
+- Schwächen & Empfehlungen (max. 5 Bullet Points):
+- Technische Hinweise (falls relevant, z. B. Meta, Hreflang, Indexierung):
+- Lokales SEO-Check:
+- SEO-LLM-Kriterien (AEO, GEO, AIO):
+- Nächste Schritte (konkret & priorisiert):
 """
 
 seo_lighthouse_prompt_deep = """
@@ -633,31 +633,31 @@ Analysebereiche:
 7. Empfehlungen mit Priorisierung
 
 Antwortstruktur:
-- 📈 SEO-Score & Gesamturteil:
-- ✅ Positive SEO-Signale:
-- ⚠️ Kritische Schwächen (mit Ursachen):
-- 🧱 Technische SEO-Hinweise:
-- 🔧 Priorisierte Optimierungsschritte:
-- 🧭 Langfristige Empfehlungen (für nachhaltiges Ranking):
+- SEO-Score & Gesamturteil:
+- Positive SEO-Signale:
+- Kritische Schwächen (mit Ursachen):
+- Technische SEO-Hinweise:
+- Priorisierte Optimierungsschritte:
+- Langfristige Empfehlungen (für nachhaltiges Ranking):
 """
 
 
 Antwortstruktur:
 === TECHNISCHE BEWERTUNG PRO SEITE ===
 - /seite1:
-  - 📈 SEO-Score & Gesamturteil:
-  - ✅ Positive SEO-Signale:
-  - ⚠️ Kritische Schwächen (mit Ursachen):
-  - 🔧 Priorisierte Optimierungsschritte:
+  - SEO-Score & Gesamturteil:
+  - Positive SEO-Signale:
+  - Kritische Schwächen (mit Ursachen):
+  - Priorisierte Optimierungsschritte:
 
 === GESAMTBEWERTUNG & FAZIT ===
-- 🔧 Wichtigste Probleme (aggregiert):
-- 📋 Empfehlungen nach Kategorie mit:
+- Wichtigste Probleme (aggregiert):
+- Empfehlungen nach Kategorie mit:
   - Prio (1-3)
   - Aufwand (niedrig/mittel/hoch)
   - Wirkung (hoch/mittel/gering)
-- 📍 Lokale Optimierungsmöglichkeiten:
-- 🤖 SEO-Lens für KI-Suchergebnisse (AEO, GEO, AIO):
+- Lokale Optimierungsmöglichkeiten:
+- SEO-Lens für KI-Suchergebnisse (AEO, GEO, AIO):
 """
 
 # ===== Cluster 9: Reports & Maßnahmen =====
@@ -682,14 +682,14 @@ Antwortstruktur:
 monthly_report_prompt_deep = """
 Du bist Marketing-Stratege. Erstelle eine tiefgehende Monatsauswertung zur Content- und Kampagnenperformance.
 
-📆 Zeitraum: {monat}  
-📄 Inhalte, Maßnahmen & Kampagnen (Textauszug oder Zusammenfassung):  
+Zeitraum: {monat}  
+Inhalte, Maßnahmen & Kampagnen (Textauszug oder Zusammenfassung):  
 {context}
 
 Zusätzliche Datenquellen:
-- 📰 Branchentrends: {rss_snippets}
-- 📈 Google Trends: {trends_insights}
-- 📊 Marktkennzahlen: {destatis_stats}
+- Branchentrends: {rss_snippets}
+- Google Trends: {trends_insights}
+- Marktkennzahlen: {destatis_stats}
 
 Ziele:
 - Erfolge & Schwächen identifizieren
@@ -697,28 +697,28 @@ Ziele:
 - Learnings & Empfehlungen für den nächsten Monat ableiten
 
 Struktur der Antwort:
-1. 🎯 Ziel- und Maßnahmenabgleich:
+1. Ziel- und Maßnahmenabgleich:
    - Was war geplant vs. umgesetzt?
    - Welche KPIs wurden erreicht?
 
-2. 📊 Performance-Analyse:
+2. Performance-Analyse:
    - Was hat gut funktioniert? (Erfolge, Hebel, Formate)
    - Was war unterdurchschnittlich oder überflüssig?
 
-3. 💡 Strategie-Empfehlungen:
+3. Strategie-Empfehlungen:
    - Welche Themen/Formate sollten fortgeführt werden?
    - Wo liegen ungenutzte Potenziale?
 
-4. 📰 Trends & Markt-Reflexion:
+4. Trends & Markt-Reflexion:
    - Externe Einflüsse oder Themenverschiebungen
    - Passende Trends fürs nächste Monatsbriefing
 
 Antwortstruktur:
-- ✅ Erfolge & Highlights:
-- ⚠️ Schwächen & Bottlenecks:
-- 🔄 Empfehlungen (präzise & umsetzbar):
-- 💡 Neue Ideen & Testansätze:
-- 📰 Trendrelevanz & Marktanpassungen:
+- Erfolge & Highlights:
+- Schwächen & Bottlenecks:
+- Empfehlungen (präzise & umsetzbar):
+- Neue Ideen & Testansätze:
+- Trendrelevanz & Marktanpassungen:
 - Lokaler Kontext:
 - Bonus: KI-Einsatz / Automatisierungsideen:
 
@@ -728,7 +728,7 @@ Antwortstruktur:
 tactical_actions_prompt_fast = """
 Du bist Performance-Marketer. Leite konkrete, sofort umsetzbare Taktiken aus dem folgenden Input ab.
 
-📄 Kontext (z. B. Analyse, Strategie, Audit):  
+Kontext (z. B. Analyse, Strategie, Audit):  
 {context}
 
 Ziel:
@@ -736,12 +736,12 @@ Ziel:
 - Schnelle Umsetzung möglich (Quick Wins)
 
 Antwortstruktur:
-- 🚀 Quick Wins (3-5 Maßnahmen, sofort umsetzbar):
-- 🔧 Mittelfristige Taktiken (nach Aufwand oder Hebel priorisiert):
-- 💬 Kommentar: (optional, Kontext oder Hinweis zur Umsetzung)
-- 📍 Lokale Maßnahmen:
-- 📰 Offline-Materialien:
-- 🤖 KI-Integration & Automatisierung:
+- Quick Wins (3-5 Maßnahmen, sofort umsetzbar):
+- Mittelfristige Taktiken (nach Aufwand oder Hebel priorisiert):
+- Kommentar: (optional, Kontext oder Hinweis zur Umsetzung)
+- Lokale Maßnahmen:
+- Offline-Materialien:
+- KI-Integration & Automatisierung:
 """
 
 
@@ -765,27 +765,27 @@ Ziel:
 - Fokussierung auf Lokalität und strategische Nachhaltigkeit
 
 Antwortstruktur:
-- 🧩 Kontextzusammenfassung (1-2 Sätze):
+- Kontextzusammenfassung (1-2 Sätze):
 
-✅ Sofort-Maßnahmen (0-4 Wochen):
+Sofort-Maßnahmen (0-4 Wochen):
 - Maßnahme: [...], Priorität: [...], Aufwand: [...], Wirkung: [...]
 
-🌟 Mittelfristige Aktionen (1-3 Monate):
+Mittelfristige Aktionen (1-3 Monate):
 - Maßnahme: [...], Priorität: [...], Aufwand: [...], Wirkung: [...]
 
-🚀 Langfristige Maßnahmen (ab 3 Monaten):
+Langfristige Maßnahmen (ab 3 Monaten):
 - Maßnahme: [...], Priorität: [...], Aufwand: [...], Wirkung: [...]
 
-📍 Lokale Maßnahmen:
+Lokale Maßnahmen:
 - Maßnahme: [...], Ziel: [...], Geo-Bezug: [...], Priorität: [...]
 
-📰 Offline-Materialien:
+Offline-Materialien:
 - Maßnahme: [...], Integration mit Online-Kampagnen: [...]
 
-🤖 KI-Integration & Automatisierung:
+KI-Integration & Automatisierung:
 - Maßnahme: [...], Tool/Plattform: [...], Wirkung: [...]
 
-🧠 SWOT-Analyse:
+SWOT-Analyse:
 - Stärken:
 - Schwächen:
 - Chancen:
