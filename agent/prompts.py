@@ -1,4 +1,5 @@
 # agent/prompts.py
+# -*- coding: utf-8 -*-
 
 """
 Prompt-Templates mit Deep Reasoning ("🧠 Tiefenanalyse") und Schnellmodus ("⚡ Schnell").
@@ -557,8 +558,8 @@ Kategorien:
 7. Interne Verlinkung
 8. Unterseiten-Strategie
 9. Lokales SEO
-10.Strategische Roadmap
-11.Trend-Relevanz & Marktpotenzial (Trends, RSS, DESTATIS)
+10. Strategische Roadmap
+11. Trend-Relevanz & Marktpotenzial (Trends, RSS, DESTATIS)
 
 ### Antwortstruktur:
 - Meta-Title (max. 60 Zeichen):
