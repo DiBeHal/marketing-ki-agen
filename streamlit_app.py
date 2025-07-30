@@ -505,18 +505,12 @@ if params.get("use_auto_sources") and not st.session_state.get("themen_bestaetig
         text=theme_text
     )
 
-    # 🛠️ Fehlerdiagnose & Absicherung
     if not isinstance(extract_result, dict):
         st.error("Agenten-Fehler: Antwort ist kein gültiges Dictionary.")
         st.write("DEBUG: extract_result:", extract_result)
         st.stop()
 
-    suggested_topics_raw = extract_result["response"]
-    proposed_topics = [line.strip("• ").strip() for line in suggested_topics_raw.splitlines() if line.strip()]
-    st.session_state.auto_topics = proposed_topics
-    st.session_state.final_topics = proposed_topics  # Default, falls keine Bearbeitung erfolgt
-
-    st.markdown("### 🧠 Themenvorschlag des Agenten:")
+    proposed_topics = [line.strip("• ").strip() for line in extract_result["response"].splitlines() if line.strip()]
     editable_topics = st.text_area(
         "✏️ Bearbeite oder lösche die vorgeschlagenen Themen (ein Thema pro Zeile):",
         value="\n".join(proposed_topics),
@@ -524,14 +518,15 @@ if params.get("use_auto_sources") and not st.session_state.get("themen_bestaetig
         key="editable_topics"
     )
 
+    # 👉 Fix: Button immer anzeigen, auch wenn vorherige State unvollständig war
     if st.button("✅ Themen übernehmen und starten", key="confirm_edit"):
         user_topics = [line.strip() for line in editable_topics.splitlines() if line.strip()]
         if not user_topics:
             st.warning("Bitte gib mindestens ein Thema an.")
-            st.stop()
-        params["topic_keywords"] = user_topics
-        st.session_state.themen_bestaetigt = True
-        st.rerun()
+        else:
+            params["topic_keywords"] = user_topics
+            st.session_state.themen_bestaetigt = True
+            st.rerun()
 
 
 # -------------------------------
