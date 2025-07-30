@@ -777,7 +777,6 @@ SWOT-Analyse:
 """
 
 alt_tag_writer_prompt_fast = """
-alt_tag_writer_prompt_fast = """
 Du bist ein SEO-Experte für Bildbeschreibungen. Analysiere die Bilder auf der folgenden Unternehmensseite und schlage zu jedem Bild zwei optimierte Alt-Texte vor.
 
 Ziel: Die Alt-Texte sollen:
