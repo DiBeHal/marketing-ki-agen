@@ -519,24 +519,12 @@ clar = {}  # Initialisiere Rückfragen-Parameter
 # -------------------------------
 # Themenvorschlag + Bestätigung
 # -------------------------------
+st.warning(f"DEBUG: use_auto_sources={params.get('use_auto_sources')} | themen_bestaetigt={st.session_state.get('themen_bestaetigt')}")
 
-# Sicherheits-Initialisierung
-if "params" not in locals():
-    params = {}
-params.setdefault("use_auto_sources", False)
-
-if "themen_bestaetigt" not in st.session_state:
-    st.session_state["themen_bestaetigt"] = False
-
-# Optional: Debug anzeigen
-# st.warning(f"DEBUG: use_auto_sources={params.get('use_auto_sources')} | themen_bestaetigt={st.session_state.get('themen_bestaetigt')}")
-
-# Nur anzeigen, wenn automatische Themen aktiviert & noch nicht bestätigt
-if params.get("use_auto_sources") and not st.session_state["themen_bestaetigt"]:
+if params.get("use_auto_sources") and not st.session_state.get("themen_bestaetigt"):
 
     st.info("🤖 Der Agent extrahiert automatisch relevante Themen für externe Datenquellen…")
 
-    # Grundlage für Themenvorschlag
     theme_text = " ".join([
         params.get("thema", ""),
         params.get("zielgruppe", ""),
@@ -557,14 +545,10 @@ if params.get("use_auto_sources") and not st.session_state["themen_bestaetigt"]:
         st.write("DEBUG: extract_result:", extract_result)
         st.stop()
 
-    # Liste der Themen extrahieren
-    suggested_topics_raw = extract_result["response"]
-    proposed_topics = [line.strip("• ").strip() for line in suggested_topics_raw.splitlines() if line.strip()]
-
+    proposed_topics = [line.strip("• ").strip() for line in extract_result["response"].splitlines() if line.strip()]
     st.session_state.auto_topics = proposed_topics
     st.session_state.final_topics = proposed_topics
 
-    # Eingabe zur Bearbeitung durch User
     st.markdown("### 🧠 Themenvorschlag des Agenten:")
     editable_topics = st.text_area(
         "✏️ Bearbeite oder lösche die vorgeschlagenen Themen (ein Thema pro Zeile):",
@@ -573,7 +557,6 @@ if params.get("use_auto_sources") and not st.session_state["themen_bestaetigt"]:
         key="editable_topics"
     )
 
-    # Übernehmen-Button
     if st.button("✅ Themen übernehmen und starten", key="confirm_edit"):
         user_topics = [line.strip() for line in editable_topics.splitlines() if line.strip()]
         if not user_topics:
@@ -581,8 +564,17 @@ if params.get("use_auto_sources") and not st.session_state["themen_bestaetigt"]:
             st.stop()
         else:
             params["topic_keywords"] = user_topics
-            st.session_state["themen_bestaetigt"] = True
+            st.session_state.themen_bestaetigt = True
+            st.session_state.start_agent = True  # Trigger Agent-Ausführung
             st.rerun()
+
+# -------------------------------
+# Manueller Start-Button, wenn keine Themenvorschläge notwendig sind
+# -------------------------------
+if not (params.get("use_auto_sources") and not st.session_state.get("themen_bestaetigt")):
+    if st.button("🤖 KI Agent starten", key="manual_start_button"):
+        st.session_state.start_agent = True
+
 
 
 # -------------------------------
