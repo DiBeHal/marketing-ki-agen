@@ -540,12 +540,13 @@ if params.get("use_auto_sources") and not st.session_state.get("themen_bestaetig
         text=theme_text
     )
 
-    if not isinstance(extract_result, dict):
-        st.error("Agenten-Fehler: Antwort ist kein gültiges Dictionary.")
+    if not isinstance(extract_result, dict) or not isinstance(extract_result.get("response"), str):
+        st.error("Agenten-Fehler: Antwort ist kein gültiges Dictionary mit String-Antwort.")
         st.write("DEBUG: extract_result:", extract_result)
         st.stop()
 
     proposed_topics = [line.strip("• ").strip() for line in extract_result["response"].splitlines() if line.strip()]
+
     st.session_state.auto_topics = proposed_topics
     st.session_state.final_topics = proposed_topics
 
