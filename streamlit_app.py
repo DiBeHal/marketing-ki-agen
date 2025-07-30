@@ -588,11 +588,12 @@ if ((not params.get("use_auto_sources")) or st.session_state.get("themen_bestaet
     params_for_agent = dict(params)
     params_for_agent.pop("task", None)
 
-    # Pflichtfelder absichern, damit keine KeyErrors auftreten
-    params_for_agent.setdefault("zielgruppe", "")
-    params_for_agent.setdefault("branche", "")
-    params_for_agent.setdefault("text", "")
-
+    # 🔒 Verhindere KeyError durch fehlende Pflichtfelder
+    params_for_agent["zielgruppe"] = params_for_agent.get("zielgruppe", "")
+    params_for_agent["branche"] = params_for_agent.get("branche", "")
+    params_for_agent["text"] = params_for_agent.get("text", "")
+    params_for_agent["url"] = params_for_agent.get("url", "")
+    
     with st.spinner("🧠 Der Agent denkt nach…"):
         result = run_agent(
             task=task_id,  # Nur hier übergeben
