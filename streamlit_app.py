@@ -588,6 +588,11 @@ if ((not params.get("use_auto_sources")) or st.session_state.get("themen_bestaet
     params_for_agent = dict(params)
     params_for_agent.pop("task", None)
 
+    # Pflichtfelder absichern, damit keine KeyErrors auftreten
+    params_for_agent.setdefault("zielgruppe", "")
+    params_for_agent.setdefault("branche", "")
+    params_for_agent.setdefault("text", "")
+
     with st.spinner("🧠 Der Agent denkt nach…"):
         result = run_agent(
             task=task_id,  # Nur hier übergeben

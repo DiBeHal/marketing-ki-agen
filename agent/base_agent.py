@@ -344,8 +344,8 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
 
     elif task == "alt_tag_writer":
         url = kwargs.get("url", "")
-        branche = kwargs.get("branche", "")
-        zielgruppe = kwargs.get("zielgruppe", "")
+        branche = kwargs.get("branche", "Allgemein")
+        zielgruppe = kwargs.get("zielgruppe", "Kunden")
         text = kwargs.get("text", "")
 
         image_data = extract_images_from_url(url)
