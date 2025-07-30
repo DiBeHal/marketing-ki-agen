@@ -313,7 +313,7 @@ Strukturierte Antwort (kurz & präzise):
 - Eine Gliederung der Seite
 - Nutzenversprechen (USP, Value Proposition):
 - Empfohlene Sections (H1-H3 Struktur):
-- Vertrauen & Beweise (z. B. Social Proof, Zertifikate):
+- Vertrauen & Beweise (z.B. Social Proof, Zertifikate):
 - Call-to-Action (Text & Platzierung):
 - Stil-Tipps (Farben, Bilder, Icons):
 - Asset-Vorschläge (Grafiken, Videos, Infografiken):
@@ -351,7 +351,7 @@ Ergänzende Informationen:
 3. Strukturvorschlag:
    - Empfohlene Sections inklusiver konkreter Textabschnitte (H1-H3, Abschnitte)
    - Scrolltiefe & visuelle Hierarchie
-   - Trust-Elemente (z. B. Social Proof, Siegel, Testimonials)
+   - Trust-Elemente (z.B.:Social Proof, Siegel, Testimonials)
 
 4. Content & Assets:
    - Copywriting-Tipps für Abschnittstypen
@@ -527,7 +527,7 @@ Antwortstruktur:
 seo_optimization_prompt_deep = """
 Du bist ein erfahrener SEO-Optimierer mit redaktioneller Erfahrung. Überarbeite den folgenden Text umfassend - mit dem Ziel, Sichtbarkeit und Relevanz in Suchmaschinen zu maximieren, ohne die Lesbarkeit für Menschen zu verlieren auf Basis der folgenden Eckdaten: 
 
-Einleitende Mini-Analyse ist erlaubt (z. B. Keywords & Struktur prüfen), aber keine Vollanalyse wie im SEO-Audit.
+Einleitende Mini-Analyse ist erlaubt (z.B. Keywords & Struktur prüfen), aber keine Vollanalyse wie im SEO-Audit.
 
 Kontext:
 - SEO-Audit-Zusammenfassung: {seo_audit_summary}
@@ -602,7 +602,7 @@ Antwortstruktur:
 - SEO-Score: (Numerischer Wert + Kurzbewertung)
 - Stärken der Seite (3 Bullet Points):
 - Schwächen & Empfehlungen (max. 5 Bullet Points):
-- Technische Hinweise (falls relevant, z. B. Meta, Hreflang, Indexierung):
+- Technische Hinweise (falls relevant, z.B. Meta, Hreflang, Indexierung):
 - Lokales SEO-Check:
 - SEO-LLM-Kriterien (AEO, GEO, AIO):
 - Nächste Schritte (konkret & priorisiert):
@@ -728,7 +728,7 @@ Antwortstruktur:
 tactical_actions_prompt_fast = """
 Du bist Performance-Marketer. Leite konkrete, sofort umsetzbare Taktiken aus dem folgenden Input ab.
 
-Kontext (z. B. Analyse, Strategie, Audit):  
+Kontext (z.B. Analyse, Strategie, Audit):  
 {context}
 
 Ziel:
