@@ -276,6 +276,9 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
         )
         prompt = tmpl.format(context=full)
         resp = llm.invoke(prompt)
+        result = resp.content if hasattr(resp, "content") else str(resp)
+        return {"response": result, "prompt_used": prompt}
+
 
     elif task == "campaign_plan":
         ctx = get_context_from_text_or_url(
@@ -293,6 +296,9 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
                 trends_insights=trends_insights,
                 destatis_stats=destatis_stats
             )
+        resp = llm.invoke(prompt)
+        result = resp.content if hasattr(resp, "content") else str(resp)
+        return {"response": result, "prompt_used": prompt}
 
     elif task == "seo_lighthouse":
         url = kwargs.get("url", "")
@@ -318,8 +324,10 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
             thema=thema,
             lighthouse_data=lighthouse_data
         )
-        result = call_llm(prompt)
+        resp = llm.invoke(prompt)
+        result = resp.content if hasattr(resp, "content") else str(resp)
         return {"response": result, "prompt_used": prompt}
+
 
     elif task == "landingpage_strategy":
         url = kwargs.get("url", "")
@@ -349,6 +357,10 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
                 facebook_ads=facebook_ads,
                 linkedin_ads=linkedin_ads
             )
+        resp = llm.invoke(prompt)
+        result = resp.content if hasattr(resp, "content") else str(resp)
+        return {"response": result, "prompt_used": prompt}
+
 
     elif task == "monthly_report":
         ctx = get_context_from_text_or_url(
@@ -361,6 +373,10 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
                 if reasoning_mode == "fast"
                 else monthly_report_prompt_deep)
         prompt = tmpl.format(context=ctx)
+        resp = llm.invoke(prompt)
+        result = resp.content if hasattr(resp, "content") else str(resp)
+        return {"response": result, "prompt_used": prompt}
+
 
     elif task == "tactical_actions":
         ctx = get_context_from_text_or_url(
@@ -373,6 +389,10 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
                 if reasoning_mode == "fast"
                 else tactical_actions_prompt_deep)
         prompt = tmpl.format(context=ctx)
+        resp = llm.invoke(prompt)
+        result = resp.content if hasattr(resp, "content") else str(resp)
+        return {"response": result, "prompt_used": prompt}
+
 
     elif task == "alt_tag_writer":
         url = kwargs.get("url", "")
@@ -412,13 +432,19 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
         txt = kwargs.get("text", "")
         if not txt:
             raise ValueError("Text zur Themenextraktion fehlt.")
-        prompt = f"""
-Extrahiere maximal 5 relevante, aktuelle Themen oder Begriffe aus folgendem Inputtext. 
-Diese sollen sich für weitere Recherche in Google Trends, RSS-News oder DESTATIS eignen.
 
-Text:
-{txt}
-"""
+        prompt = f"""
+    Extrahiere maximal 5 relevante, aktuelle Themen oder Begriffe aus folgendem Inputtext. 
+    Diese sollen sich für weitere Recherche in Google Trends, RSS-News oder DESTATIS eignen.
+
+    Text:
+    {txt}
+    """
+
+        resp = llm.invoke(prompt)
+        result = resp.content if hasattr(resp, "content") else str(resp)
+        return {"response": result, "prompt_used": prompt}
+
     elif task == "memory_write":
         save_to_memory([kwargs.get("text", "")])
         return {"response": "✅ Wissen gespeichert."}
