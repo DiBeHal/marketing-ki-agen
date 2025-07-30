@@ -38,6 +38,7 @@ from agent.customer_memory import load_customer_memory
 from agent.activity_log import log_event
 from agent.tools.ads_scraper import scrape_facebook_ads, scrape_google_ads, scrape_linkedin_ads
 from agent.tools.alt_tag_helper import extract_images_from_url
+from agent.tools.google_search import find_competitor_sites
 
 # ===== LangChain LLM mit Token-Limit =====
 llm = ChatOpenAI(model="gpt-4o", max_tokens=3000)
@@ -54,22 +55,27 @@ def search_google(brand_or_domain: str) -> List[str]:
     ]
 
 def get_context_from_text_or_url(text: str, url: str, customer_id: Optional[str] = None) -> str:
-    context = ""
+    """
+    Liefert den sinnvollsten Kontext für den Prompt zurück – entweder Text, HTML oder Kundenspeicher.
+    """
+    text = text.strip() if text else ""
+    url = url.strip() if url else ""
 
-    # Customer-Memory NICHT mehr hier laden – kommt bereits über text rein
-    if text and len(text.strip().split()) > 50:
-        context += text.strip()
+    if text:
+        return text
 
     if url:
         try:
-            context += "\n" + load_html(url)
+            return load_html(url)
         except Exception as e:
-            context += f"\n[Fehler beim Laden von {url}: {e}]"
+            return f"[Fehler beim Laden der URL {url}: {e}]"
 
-    if not context.strip():
-        raise ValueError("Kein verwertbarer Inhalt vorhanden (Text, URL oder Kunden-Memory).")
+    if customer_id:
+        memory = load_customer_memory(customer_id)
+        if memory:
+            return memory
 
-    return context
+    raise ValueError("Kein verwertbarer Inhalt vorhanden (Text, URL oder Kunden-Memory).")
 
 def fetch_rss_snippets(feeds: List[str], limit: int = 3) -> str:
     snippets = []
@@ -193,6 +199,16 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
                 mitbewerber_kontexte.append(ctx_m)
             except Exception as e:
                 mitbewerber_kontexte.append(f"[Fehler beim Laden von {url}: {e}]")
+        if not mitbewerber_urls:
+            suche = f"{kwargs.get('branche', '')} {kwargs.get('zielgruppe', '')} Anbieter"
+            competitor_sites = find_competitor_sites(suche, max_results=2)
+
+            for site in competitor_sites:
+                try:
+                    ctx_m = load_html(site)
+                    mitbewerber_kontexte.append(ctx_m)
+                except Exception as e:
+                    mitbewerber_kontexte.append(f"[Fehler beim Laden von {site}: {e}]")
 
         if reasoning_mode == "deep":
             themenbegriffe = kwargs.get("ads_keywords", [])
@@ -216,28 +232,31 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
         )
 
     elif task == "seo_audit":
-        ctx = get_context_from_text_or_url(
-            kwargs.get("text", ""), kwargs.get("url", ""), kwargs.get("customer_id")
-        )
-        signals = {}
-        seo_score = {}
-        if reasoning_mode == "deep":
-            try:
-                signals = extract_seo_signals(kwargs.get("url", ""))
-                raw_lh = run_lighthouse(kwargs.get("url", ""))
-                if isinstance(raw_lh, dict):
-                    seo_score = raw_lh.get("categories", {}).get("seo", {})
-            except Exception as e:
-                seo_score = {"error": str(e)}
+        url = kwargs.get("url", "")
+        zielgruppe = kwargs.get("zielgruppe", "")
+        thema = kwargs.get("thema", "")
+        keywords = kwargs.get("topic_keywords", [])
+        if isinstance(keywords, list):
+            keywords = ", ".join(keywords)
 
-        combined = (
-            f"TEXT-INHALT:\n{ctx}\n\n"
-            f"TECHNIK:\n{json.dumps(signals, indent=2)}\n\n"
-            f"LIGHTHOUSE:\n"
-            f"{json.dumps(seo_score, indent=2) if seo_score else '(Keine Lighthouse-Daten verfügbar)'}"
-        )
+        html = load_html(url)
+        seo = extract_seo_signals(html)
+
         tmpl = seo_audit_prompt_fast if reasoning_mode == "fast" else seo_audit_prompt_deep
-        prompt = tmpl.format(context=combined)
+
+        prompt = tmpl.format(
+            title=seo.get("title", ""),
+            description=seo.get("description", ""),
+            headlines=seo.get("headlines", []),
+            text=seo.get("text", ""),
+            zielgruppe=zielgruppe,
+            thema=thema,
+            keywords=keywords
+        )
+
+        result = call_llm(prompt)
+        return {"response": result, "prompt_used": prompt}
+
 
     elif task in ["seo_optimize", "seo_optimization"]:
         txt = kwargs.get("text", "")
@@ -276,18 +295,28 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
 
     elif task == "seo_lighthouse":
         url = kwargs.get("url", "")
-        if not url:
-            raise ValueError("URL für Lighthouse-Analyse fehlt.")
-        raw_lh = run_lighthouse(url)
-        if isinstance(raw_lh, dict):
-            seo_data = raw_lh.get("categories", {}).get("seo", {})
-        else:
-            seo_data = {}
-        seo_data_str = json.dumps(seo_data, indent=2) if seo_data else "(Keine Lighthouse-Daten verfügbar)"
-        tmpl = (seo_lighthouse_prompt_fast
-                if reasoning_mode == "fast"
-                else seo_lighthouse_prompt_deep)
-        prompt = tmpl.format(context=seo_data_str)
+        zielgruppe = kwargs.get("zielgruppe", "")
+        thema = kwargs.get("thema", "")
+
+        lighthouse_data = "(Keine Lighthouse-Daten verfügbar)"
+        try:
+            raw_lh = run_lighthouse(url)
+            if isinstance(raw_lh, dict):
+                lighthouse_data = json.dumps(raw_lh.get("categories", {}).get("seo", {}), indent=2)
+        except Exception as e:
+            lighthouse_data = f"[Fehler: {e}]"
+
+        tmpl = seo_lighthouse_prompt_fast if reasoning_mode == "fast" else seo_lighthouse_prompt_deep
+        prompt = tmpl.format(
+            url=url,
+            zielgruppe=zielgruppe,
+            thema=thema,
+            lighthouse_data=lighthouse_data
+        )
+
+        result = call_llm(prompt)
+        return {"response": result, "prompt_used": prompt}
+
 
     elif task == "landingpage_strategy":
         url = kwargs.get("url", "")

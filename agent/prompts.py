@@ -124,32 +124,39 @@ Antwortstruktur:
 
 # ===== Cluster 3: Wettbewerbsanalyse =====
 competitive_analysis_prompt_fast = """
-Du bist ein erfahrener Marketinganalyst. Vergleiche die Online-Präsenz des Kunden mit 2–3 direkt genannten Mitbewerbern und identifiziere klare Unterschiede und Chancen zur Abgrenzung.
+Du bist ein erfahrener Marketinganalyst. Vergleiche die Online-Präsenz des Kunden mit 2–3 direkt genannten Mitbewerbern,  sowie 2-3 recherchierten von dir und identifiziere klare Unterschiede und Chancen zur Abgrenzung.
 
-Analysiere die folgenden Bereiche:
+### Aufgaben:
 
-1. **Website-Analyse**
+1. Recherchiere zwei reale Firmen (Wettbewerber), die ähnliche Produkte/Dienstleistungen anbieten und die gleiche Zielgruppe ansprechen. Wähle:
+   - nur **bekannte oder auffindbare Firmen**
+   - aus der gleichen Branche oder mit direktem Angebot
+   - wenn möglich: ähnliche geografische Märkte (DACH, EU)
+
+2. Analysiere die folgenden Bereiche:
+
+**Website-Analyse**
    - Menüführung & Navigationsstruktur
    - Zielgruppenansprache & USPs
    - Call-to-Actions (Position, Auffälligkeit)
    - Visuelle Markenidentität & Wiedererkennung
 
-2. **Externe Präsenz**
+**Externe Präsenz**
    - Erwähnungen auf Fachseiten, Presseportalen, Branchenverzeichnissen
    - Social-Media-Aktivität (Frequenz, Kanäle, Engagement)
 
-3. **Ads-Analyse** (falls Daten vorhanden)
+**Ads-Analyse** (falls Daten vorhanden)
    - Google Ads: {google_ads}
    - Facebook Ads: {facebook_ads}
    - LinkedIn Ads: {linkedin_ads}
 
-4. **Automatisierte Mitbewerbersuche**
-   - Nenne bis zu 2 weitere relevante Unternehmen mit kurzer Begründung
-
 ⚠️ Bitte:
+- Antworte im Markdown-Stil
 - Vermeide vage Formulierungen wie „einige“, „manche“
 - Nutze Vergleichstabellen oder Bullet-Listen
 - Begründe Einschätzungen konkret anhand der Inhalte
+- Arbeite nur mit echten Firmen
+- Keine Platzhalter oder fiktiven Namen!
 
 Antwortstruktur:
 
@@ -163,15 +170,18 @@ Antwortstruktur:
 1. ...
 2. ...
 
-🆕 Automatisch ergänzte Mitbewerber:
-- [Name 1] – weil ...
-- [Name 2] – weil ...
-
 🎯 Handlungsempfehlungen zur Differenzierung:
 1. ...
 """
 competitive_analysis_prompt_deep = """
-Du bist ein strategischer Wettbewerbsanalyst für digitale Präsenz. Führe eine vergleichende Tiefenanalyse zwischen dem Kunden und mehreren Mitbewerbern durch. Gib präzise Einschätzungen mit konkreten Beispielen, tabellarischen Vergleichen und klaren Empfehlungen.
+Du bist ein strategischer Wettbewerbsanalyst für digitale Präsenz. Führe eine vergleichende Tiefenanalyse zwischen dem Kunden und mehreren Mitbewerbern (genannten und recherchierten) durch. Gib präzise Einschätzungen mit konkreten Beispielen, tabellarischen Vergleichen und klaren Empfehlungen. 
+
+### Aufgaben:
+
+Recherchiere vier reale Firmen (Wettbewerber), die ähnliche Produkte/Dienstleistungen anbieten und die gleiche Zielgruppe ansprechen. Wähle:
+   - nur **bekannte oder auffindbare Firmen**
+   - aus der gleichen Branche oder mit direktem Angebot
+   - wenn möglich: ähnliche geografische Märkte (DACH, EU)
 
 Eingaben:
 - Kunde: {contexts_combined_kunde}
@@ -204,6 +214,9 @@ Analysefelder:
 - Nutze Tabellen oder Bullet-Listen
 - Vermeide Floskeln & Allgemeinplätze
 - Quantifiziere wo möglich (z. B. „3 CTAs auf Startseite“)
+- Begründe Einschätzungen konkret anhand der Inhalte
+- Arbeite nur mit echten Firmen
+- Keine Platzhalter oder fiktiven Namen!
 
 Antwortstruktur:
 
@@ -399,37 +412,25 @@ Ergänzende Informationen:
 # ===== Cluster 6: SEO Inhalte =====
 
 seo_audit_prompt_fast = """
-Du bist SEO-Experte. Führe ein kompaktes SEO-Audit der folgenden Seite durch:
+Du bist SEO-Experte. Führe ein kompaktes SEO-Audit - Analysiere die folgende Seite hinsichtlich ihrer SEO-Stärken und -Schwächen:
 
-URL oder Textinhalt:  
-{context}
+- Titel der Seite: "{title}"
+- Meta-Description: "{description}"
+- H1 bis H3: {headlines}
+- Text-Inhalt: {text}
+- Zielgruppe: {zielgruppe}
+- Thema: {thema}
+- Wichtige Keywords: {keywords}
 
-Schwerpunkte deiner Analyse:
-1. Meta-Daten & Snippet-Potenzial:
-   - Title, Description (Länge, Keywords, Clickability)
-   - Verbesserungsvorschläge
+Beantworte:
 
-2. Keyword-Relevanz:
-   - Fokus-Thema identifizieren
-   - Passende semantische Begriffe / Cluster
+1. **Meta-Optimierung**: Bewerte Titel & Description. Enthalten sie relevante Keywords? Sind sie zu lang/kurz?
+2. **Keyword-Nutzung**: Welche Keywords werden genutzt, welche fehlen im Text?
+3. **Struktur & UX**: Ist die Überschriftenstruktur (H1-H3) logisch? Fehlen visuelle Elemente oder Call-to-Actions?
+4. **Inhaltsanalyse**: Ist der Content relevant für Zielgruppe und Thema? Gibt es Thin-Content?
+5. **Verbesserungsideen**: Liste 3–5 konkrete, umsetzbare Empfehlungen zur SEO-Verbesserung.
 
-3. Content-Qualität:
-   - Klarheit, Struktur, Keyword-Integration
-   - Duplicate/Thin Content vermeiden
-
-4. Nutzerfreundlichkeit:
-   - Überschriftenstruktur (H1-H3)
-   - Lesbarkeit & Aufbau
-
-5. CTA & Zielerreichungs-Analyse
-
-Antwortstruktur:
-- Fokus-Thema:
-- Meta-Optimierung:
-- Keyword-Chancen:
-- Content-Feedback:
-- Struktur- & UX-Hinweise:
-- Verbesserungsideen:
+Antworte als strukturierte Analyse. Nur für diese Seite, keine allgemeinen Tipps.
 """
 
 seo_audit_prompt_deep = """
@@ -489,6 +490,8 @@ Antwortstruktur:
 - Lokales SEO
 - Nutzerfokus (AIO, GEO, AEO):
 - Priorisierte Optimierungsvorschläge:
+
+Antworte als strukturierte Analyse. Nur für diese Seite, keine allgemeinen Tipps.
 """
 
 # 7. SEO-Optimierung
@@ -582,9 +585,6 @@ Antwortstruktur:
 """
 
 # ===== Cluster 8: Technisches SEO =====
-
-# 8. SEO-Optimierung
-
 seo_lighthouse_prompt_fast = """
 Du bist SEO-Analyst. Interpretiere die mit oder ohne der folgenden Lighthouse-Daten und gib eine kurze Bewertung zur SEO-Qualität der analysierten Seite ab.
 
@@ -594,9 +594,10 @@ Kontext:
 Lighthouse-Daten (SEO-Sektion):  
 {lighthouse_data}
 
-Antwortstruktur:
+Beantworte:
 - SEO-Score: (Numerischer Wert + Kurzbewertung)
 - Stärken der Seite (3 Bullet Points):
+- Ladezeit, Struktur, Mobile-Freundlichkeit:
 - Schwächen & Empfehlungen (max. 5 Bullet Points):
 - Technische Hinweise (falls relevant, z.B. Meta, Hreflang, Indexierung):
 - Lokales SEO-Check:
@@ -776,58 +777,59 @@ SWOT-Analyse:
 """
 
 alt_tag_writer_prompt_fast = """
-Du bist ein SEO-Experte. Deine Aufgabe ist es, aussagekräftige und suchmaschinenoptimierte Alt-Texte für alle Bilder auf einer Webseite zu erstellen.
+alt_tag_writer_prompt_fast = """
+Du bist ein SEO-Experte für Bildbeschreibungen. Analysiere die Bilder auf der folgenden Unternehmensseite und schlage zu jedem Bild zwei optimierte Alt-Texte vor.
 
-### Kontext:
-Die Seite gehört zu einem Unternehmen in folgendem Bereich:
-Branche: {branche}
-Zielgruppe: {zielgruppe}
+Ziel: Die Alt-Texte sollen:
+- relevante Keywords enthalten
+- für die Zielgruppe ansprechend sein
+- die Branche berücksichtigen
+- beschreiben, was auf dem Bild wirklich zu sehen ist
+- nicht generisch oder austauschbar sein
 
-### Aufgabe:
-- Analysiere alle Bilder auf der angegebenen URL ({url})
-- Berücksichtige den umgebenden Text, Seitentitel, Bildquelle und den Gesamtzweck der Seite
-- Gib für **jedes Bild zwei alternative Alt-Text-Varianten**
-- Alt-Texte sollen:
-    - die Zielgruppe ansprechen
-    - Keywords sinnvoll enthalten
-    - semantisch korrekt und natürlich klingen
-    - max. 125 Zeichen lang sein
+## Unternehmensinformationen:
+- Branche: {branche}
+- Zielgruppe: {zielgruppe}
+- Thema/Textkontext: {text}
+- URL: {url}
 
-### Bilddaten (automatisch extrahiert):
+## Gefundene Bilder & Kontexte:
 {image_context}
 
-### Ausgabeformat:
+Gib pro Bild exakt 2 alternative Alt-Tags (knapp, keyword-orientiert) im Format:
+
 Bild 1:
 - Variante A: ...
 - Variante B: ...
-
-Bild 2:
-- Variante A: ...
-- Variante B: ...
-
-Beginne jetzt.
 """
 
 alt_tag_writer_prompt_deep = """
-Du bist ein fortgeschrittener SEO-Agent, spezialisiert auf visuelle Zugänglichkeit und Suchmaschinenoptimierung. Analysiere alle Bilder auf folgender Webseite ({url}) und erstelle **pro Bild zwei Alt-Text-Vorschläge**, abgestimmt auf:
+Du bist ein fortgeschrittener SEO-Experte, spezialisiert auf visuelle Zugänglichkeit, für Bildbeschreibungen und Suchmaschinenoptimierung. Analysiere alle Bilder auf folgender Webseite ({url}) und erstelle pro Bild zwei Alt-Text-Vorschläge.
 
-- Unternehmenskontext: {branche}
+Ziel: Die Alt-Texte sollen:
+- relevante Keywords enthalten
+- für die Zielgruppe ansprechend sein
+- die Branche berücksichtigen
+- beschreiben, was auf dem Bild wirklich zu sehen ist
+- nicht generisch oder austauschbar sein
+
+## Unternehmensinformationen:
+- Branche: {branche}
 - Zielgruppe: {zielgruppe}
-- Zusatzkontext/Text: {text}
+- Thema/Textkontext: {text}
+- URL: {url}
 
-Berücksichtige:
-- Bildinhalte & -position
-- semantische Umgebung (Text, HTML-Struktur)
-- SEO-relevante Begriffe
-- Zugänglichkeit (für Screenreader)
-
-### Bilddaten (automatisch extrahiert):
+## Gefundene Bilder & Kontexte:
 {image_context}
 
-### Format:
+## Format:
 Bild 1:
 - Variante A: ...
 - Variante B: ...
 
-Gib klare, sinnvolle und präzise Alt-Beschreibungen.
+Erstelle für jedes Bild zwei Varianten eines aussagekräftigen, keyword-basierten Alt-Tags, die:
+- SEO-Kriterien erfüllen
+- auf Zielgruppe und Branche zugeschnitten sind
+- sich in Sprache, Tonalität und Betonung unterscheiden
+- Inhalte sichtbar beschreiben, auch wenn die Bilder nicht angezeigt werden
 """

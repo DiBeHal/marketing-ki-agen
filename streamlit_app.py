@@ -582,6 +582,26 @@ if not (params.get("use_auto_sources") and not st.session_state.get("themen_best
 # -------------------------------
 if ((not params.get("use_auto_sources")) or st.session_state.get("themen_bestaetigt")) and st.session_state.start_agent:
 
+    # --------------------------------
+    # Mapping für lesbare Tasknamen → interne Task-IDs
+    # --------------------------------
+    task_map = {
+        "Content Analyse": "content_analysis",
+        "Content Writing": "content_write",
+        "Wettbewerbsanalyse": "competitive_analysis",
+        "SEO Audit": "seo_audit",
+        "SEO Optimierung": "seo_optimization",
+        "Technisches SEO (Lighthouse)": "seo_lighthouse",
+        "Kampagnenplanung": "campaign_plan",
+        "Landingpage Strategie": "landingpage_strategy",
+        "Monatsreport": "monthly_report",
+        "Marketingmaßnahmen planen": "tactical_actions",
+        "Alt-Tag Generator": "alt_tag_writer"
+    }
+
+    task_id = task_map.get(task)
+
+
     clar = {}  # Rückfragen-Parameter initialisieren
 
     # Kopiere params und entferne "task", damit kein Konflikt mit run_agent(task=...) entsteht
@@ -593,15 +613,23 @@ if ((not params.get("use_auto_sources")) or st.session_state.get("themen_bestaet
     params_for_agent["branche"] = params_for_agent.get("branche", "")
     params_for_agent["text"] = params_for_agent.get("text", "")
     params_for_agent["url"] = params_for_agent.get("url", "")
-    
+    params_for_agent["thema"] = params_for_agent.get("thema", "")
+    params_for_agent["topic_keywords"] = params.get("topic_keywords", [])
+    params_for_agent["customer_id"] = params.get("customer_id", "").strip()
+
     with st.spinner("🧠 Der Agent denkt nach…"):
         result = run_agent(
-            task=task_id,  # Nur hier übergeben
+            task=task_id,
             reasoning_mode=mode,
             conversation_id=st.session_state.get("conv_id"),
             clarifications=clar,
+            zielgruppe=params_for_agent.get("zielgruppe", ""),
+            branche=params_for_agent.get("branche", ""),
+            text=params_for_agent.get("text", ""),
+            url=params_for_agent.get("url", ""),
             **params_for_agent
         )
+
 
         # Zwischenspeichern der Ergebnisse
         st.session_state.response = result.get("response", "")
