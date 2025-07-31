@@ -75,7 +75,12 @@ if page == "⚙️ Admin-Dashboard":
     events = get_events()
     df = pd.DataFrame(events)
     if not df.empty:
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
+        df.columns = df.columns.str.strip().str.lower()
+        if "type" not in df.columns:
+            st.warning("⚠️ Spalte 'type' nicht im Event-Log gefunden.")
+            df["type"] = ""
+    else:
+        df = pd.DataFrame(columns=["type", "timestamp", "customer_id", "task", "rating", "comment", "mode", "input_tokens", "output_tokens"])
 
     # 1) Kunden-Übersicht
     st.subheader("🔹 Kunden-Übersicht")
@@ -292,6 +297,9 @@ elif task == "Content Writing":
     if not (zielgruppe and tonalitaet and thema):
         st.error("❗ Bitte Zielgruppe, Tonalität und Thema angeben.")
         st.stop()
+    if not (text or url or context or customer_id or optional_pdf_path):
+        st.error("❗ Bitte gib mindestens Text, URL, PDF oder Kundenkontext an.")
+        st.stop()
     params = {
         "task": task_id,
         "zielgruppe": zielgruppe,
@@ -305,11 +313,16 @@ elif task == "Content Writing":
 
 elif task == "Wettbewerbsanalyse":
     task_id = "competitive_analysis"
+
     eigene_url = st.text_input("🌐 Eigene Website")
-    wettbewerber = st.text_area("🏢 Wettbewerber-URLs (eine pro Zeile)", height=200)
-    wettbewerber_urls = [url.strip() for url in wettbewerber.split("\n") if url.strip()]
-    if not (eigene_url and wettbewerber_urls):
-        st.error("❗ Bitte eigene URL und Wettbewerber-URLs angeben.")
+    wettbewerber_urls_input = st.text_area("🏢 Wettbewerber-URLs (eine pro Zeile)", height=150, placeholder="https://www.firma-a.de\nhttps://www.firma-b.de")
+    wettbewerber_namen_input = st.text_area("🔠 Wettbewerber-Namen (eine pro Zeile)", height=150, placeholder="Firma A\nFirma B")
+
+    wettbewerber_urls = [url.strip() for url in wettbewerber_urls_input.split("\n") if url.strip()]
+    wettbewerber_namen = [name.strip() for name in wettbewerber_namen_input.split("\n") if name.strip()]
+
+    if not eigene_url:
+        st.error("❗ Bitte eigene Website angeben.")
         st.stop()
 
     st.subheader("📊 Optional: Werbebibliotheken einbeziehen")
@@ -325,11 +338,15 @@ elif task == "Wettbewerbsanalyse":
         "task": task_id,
         "eigene_url": eigene_url,
         "wettbewerber_urls": wettbewerber_urls,
+        "wettbewerber_namen": wettbewerber_namen,
         "customer_id": customer_id,
         "ads_keywords": ads_themen_liste,
         "text": customer_memory + "\n\n" + context,
-        "customer_name": unternehmen
+        "customer_name": unternehmen,
+        "branche": st.session_state.get("branche", ""),
+        "zielgruppe": st.session_state.get("zielgruppe", "")
     }
+
     if facebook:
         params["facebook_company"] = unternehmen
     if google:
@@ -383,29 +400,29 @@ elif task == "Technisches SEO (Lighthouse)":
 
 elif task == "Kampagnenplanung":
     task_id = "campaign_plan"
+
     ziel = st.text_input("🎯 Kampagnenziel")
     produkt = st.text_input("📦 Produkt/Dienstleistung")
     zeitraum = st.text_input("🕒 Zeitraum")
-    combined_context = (customer_memory + "\n\n" + context).strip()
-    if not ziel and not produkt and not combined_context:
+    zielgruppe = st.text_input("👥 Zielgruppe", placeholder="z. B. B2B Entscheider, junge Erwachsene")
+
+    if not (ziel or produkt or customer_memory.strip() or context.strip()):
         st.error("❗ Bitte gib mindestens Ziel, Produkt oder Kontext an – sonst kein Start.")
         st.stop()
 
     params = {
         "task": task_id,
-        "ziel": ziel,
-        "produkt": produkt,
-        "zeitraum": zeitraum,
-        "text": customer_memory + "\n\n" + context,
+        "ziel": ziel.strip() or "Nicht angegeben",
+        "produkt": produkt.strip() or "Nicht angegeben",
+        "zeitraum": zeitraum.strip() or "Nicht definiert",
+        "zielgruppe": zielgruppe.strip() or "Zielgruppe nicht angegeben",
+        "text": (customer_memory + "\n\n" + context).strip(),
         "customer_id": customer_id
     }
+
     if optional_pdf_path:
         params["pdf_path"] = optional_pdf_path
 
-    # 🚨 Eingabe-Validierung für Kampagnenplanung
-    if not ziel and not produkt and not customer_memory.strip() and not context.strip():
-        st.error("❗ Bitte gib mindestens ein Kampagnenziel, Produkt oder Kontext ein – sonst kein Start.")
-        st.stop()
 
 
 elif task == "Landingpage Strategie":

@@ -225,6 +225,9 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
 
     if task == "content_analysis":
         check_task_requirements(task, kwargs)
+        zielgruppe = kwargs.get("zielgruppe", "Zielgruppe nicht angegeben")
+        thema = kwargs.get("thema", "Kein Thema angegeben")
+
         ctx = get_context_from_text_or_url(
             kwargs.get("text", ""),
             kwargs.get("url", ""),
@@ -235,49 +238,95 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
         tmpl = content_analysis_prompt_fast if reasoning_mode == "fast" else content_analysis_prompt_deep
         prompt = tmpl.format(
             context=ctx,
+            zielgruppe=zielgruppe,
+            thema=thema,
             rss_snippets=rss_snippets,
             trends_insights=trends_insights,
             destatis_stats=destatis_stats
         )
+        resp = llm.invoke(prompt)
+        result = resp.content if hasattr(resp, "content") else str(resp)
+        return {"response": result, "prompt_used": prompt}
 
     elif task == "content_writing":
         check_task_requirements(task, kwargs)
-        zg = kwargs.get("zielgruppe", "")
-        ton = kwargs.get("tonalitaet", "")
-        th = kwargs.get("thema", "")
-        ctx = get_context_from_text_or_url(kwargs.get("text", ""), kwargs.get("url", ""), kwargs.get("customer_id"), kwargs.get("pdf_path"))
-        tmpl = content_write_prompt_fast if reasoning_mode == "fast" else content_write_prompt_deep
-        prompt = tmpl.format(
-            zielgruppe=zg,
-            tonalitaet=ton,
-            thema=th,
-            rss_snippets=rss_snippets,
-            trends_insights=trends_insights,
-            destatis_stats=destatis_stats
+        zielgruppe = kwargs.get("zielgruppe", "Zielgruppe nicht angegeben").strip()
+        tonalitaet = kwargs.get("tonalitaet", "Neutral").strip()
+        thema = kwargs.get("thema", "Kein Thema angegeben").strip()
+
+        ctx = get_context_from_text_or_url(
+            kwargs.get("text", ""),
+            kwargs.get("url", ""),
+            kwargs.get("customer_id"),
+            kwargs.get("pdf_path")
         )
+
+        tmpl = (
+            content_writer_prompt_fast
+            if reasoning_mode == "fast"
+            else content_writer_prompt_deep
+        )
+
+        prompt = tmpl.format(
+            context=ctx,
+            zielgruppe=zielgruppe,
+            tonalitaet=tonalitaet,
+            thema=thema
+        )
+
+        resp = llm.invoke(prompt)
+        result = resp.content if hasattr(resp, "content") else str(resp)
+        return {"response": result, "prompt_used": prompt}
 
     elif task == "competitive_analysis":
         check_task_requirements(task, kwargs)
-        ctx_k = load_html(kwargs.get("eigene_url", ""))
+
+        # Kontext des Kunden
+        ctx_k = get_context_from_text_or_url(
+            kwargs.get("text", ""),
+            kwargs.get("eigene_url", ""),
+            kwargs.get("customer_id"),
+            kwargs.get("pdf_path")
+        )
+
+        # Mitbewerber-Kontexte (aus URLs oder Namen)
         mitbewerber_urls = kwargs.get("wettbewerber_urls", [])
+        mitbewerber_namen = kwargs.get("wettbewerber_namen", [])
         mitbewerber_kontexte = []
+
+        # Manuell angegebene URLs
         for url in mitbewerber_urls:
             try:
                 ctx_m = load_html(url.strip())
-                mitbewerber_kontexte.append(ctx_m)
+                mitbewerber_kontexte.append(f"{url}:\n{ctx_m}")
             except Exception as e:
                 mitbewerber_kontexte.append(f"[Fehler beim Laden von {url}: {e}]")
-        if not mitbewerber_urls:
+
+        # Manuell angegebene Namen (z. B. bei Fast-Modus)
+        for name in mitbewerber_namen:
+            try:
+                sites = find_competitor_sites(name, max_results=1)
+                if sites:
+                    html = load_html(sites[0])
+                    mitbewerber_kontexte.append(f"{name} ({sites[0]}):\n{html}")
+                else:
+                    mitbewerber_kontexte.append(f"[Keine Webseite für {name} gefunden]")
+            except Exception as e:
+                mitbewerber_kontexte.append(f"[Fehler bei Recherche {name}: {e}]")
+
+        # Nur bei Deep-Modus: zusätzliche Recherche
+        if reasoning_mode == "deep" and not mitbewerber_urls and not mitbewerber_namen:
             suche = f"{kwargs.get('branche', '')} {kwargs.get('zielgruppe', '')} Anbieter"
             competitor_sites = find_competitor_sites(suche, max_results=2)
-
             for site in competitor_sites:
                 try:
                     ctx_m = load_html(site)
-                    mitbewerber_kontexte.append(ctx_m)
+                    mitbewerber_kontexte.append(f"{site}:\n{ctx_m}")
                 except Exception as e:
                     mitbewerber_kontexte.append(f"[Fehler beim Laden von {site}: {e}]")
 
+        # Ads-Analyse (nur deep)
+        google_ads = facebook_ads = linkedin_ads = "[Keine Daten]"
         if reasoning_mode == "deep":
             themenbegriffe = kwargs.get("ads_keywords", [])
             company = kwargs.get("customer_name", "")
@@ -288,40 +337,60 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
             if kwargs.get("linkedin_company"):
                 linkedin_ads = scrape_linkedin_ads(company, themenbegriffe)
 
+        # Prompt setzen
         tmpl = competitive_analysis_prompt_fast if reasoning_mode == "fast" else competitive_analysis_prompt_deep
         prompt = tmpl.format(
+            kunde_name=kwargs.get("customer_name", "Unsere Firma"),
+            branche=kwargs.get("branche", "Allgemein"),
+            zielgruppe=kwargs.get("zielgruppe", "Kunden"),
             contexts_combined_kunde=ctx_k,
             contexts_combined_mitbewerber="\n\n---\n\n".join(mitbewerber_kontexte),
-            rss_snippets=rss_snippets,
-            trends_insights=trends_insights,
             google_ads=google_ads,
             facebook_ads=facebook_ads,
             linkedin_ads=linkedin_ads
         )
 
+        resp = llm.invoke(prompt)
+        result = resp.content if hasattr(resp, "content") else str(resp)
+        return {"response": result, "prompt_used": prompt}
+
     elif task == "seo_audit":
         check_task_requirements(task, kwargs)
+
         url = kwargs.get("url", "")
-        zielgruppe = kwargs.get("zielgruppe", "")
-        thema = kwargs.get("thema", "")
+        zielgruppe = kwargs.get("zielgruppe", "Zielgruppe nicht angegeben")
+        thema = kwargs.get("thema", "Kein Thema angegeben")
         keywords = kwargs.get("topic_keywords", [])
         if isinstance(keywords, list):
             keywords = ", ".join(keywords)
 
-        html = load_html(url)
+        ctx = get_context_from_text_or_url(
+            kwargs.get("text", ""),
+            url,
+            kwargs.get("customer_id"),
+            kwargs.get("pdf_path")
+        )
         seo = extract_seo_signals(html)
 
         tmpl = seo_audit_prompt_fast if reasoning_mode == "fast" else seo_audit_prompt_deep
 
-        prompt = tmpl.format(
-            title=seo.get("title", ""),
-            description=seo.get("description", ""),
-            headlines=seo.get("headlines", []),
-            text=seo.get("text", ""),
-            zielgruppe=zielgruppe,
-            thema=thema,
-            keywords=keywords
-        )
+        if reasoning_mode == "fast":
+            prompt = tmpl.format(
+                title=seo.get("title", ""),
+                description=seo.get("description", ""),
+                headlines=seo.get("headlines", []),
+                text=seo.get("text", ""),
+                zielgruppe=zielgruppe,
+                thema=thema,
+                keywords=keywords
+            )
+        else:
+            prompt = tmpl.format(
+                contexts_combined=ctx,
+                rss_snippets=kwargs.get("rss_snippets", "[Keine RSS-Daten]"),
+                trends_insights=kwargs.get("trends_insights", "[Keine Trenddaten]")
+            )
+
 
         resp = llm.invoke(prompt)
         result = resp.content if hasattr(resp, "content") else str(resp)
@@ -329,18 +398,33 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
 
     elif task in ["seo_optimize", "seo_optimization"]:
         check_task_requirements("seo_optimization", kwargs)
-        txt = kwargs.get("text", "")
-        url = kwargs.get("url", "")
-        cust_id = kwargs.get("customer_id")
-        audit_pdf = kwargs.get("pdf_path")
 
-        full = get_context_from_text_or_url(txt, url, cust_id, audit_pdf)
+        ctx = get_context_from_text_or_url(
+            kwargs.get("text", ""),
+            kwargs.get("url", ""),
+            kwargs.get("customer_id"),
+            kwargs.get("pdf_path")
+        )
         tmpl = (
             seo_optimization_prompt_fast
             if reasoning_mode == "fast"
             else seo_optimization_prompt_deep
         )
-        prompt = tmpl.format(contexts_combined=full)
+        
+        if reasoning_mode == "fast":
+            prompt = tmpl.format(
+                contexts_combined=ctx,
+                seo_audit_summary=kwargs.get("seo_audit_summary", "[Keine Voranalyse verfügbar]")
+            )
+        else:
+            prompt = tmpl.format(
+                contexts_combined=ctx,
+                seo_audit_summary=kwargs.get("seo_audit_summary", "[Keine Voranalyse verfügbar]"),
+                lighthouse_json=kwargs.get("lighthouse_json", "[Keine Lighthouse-Daten]"),
+                zielgruppe=kwargs.get("zielgruppe", "Zielgruppe nicht angegeben"),
+                ziel=kwargs.get("ziel", "Ziel nicht angegeben"),
+                thema=kwargs.get("thema", "Kein Thema angegeben")
+            )
         resp = llm.invoke(prompt)
         result = resp.content if hasattr(resp, "content") else str(resp)
         return {"response": result, "prompt_used": prompt}
@@ -405,13 +489,23 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
         )
 
         tmpl = seo_lighthouse_prompt_fast if reasoning_mode == "fast" else seo_lighthouse_prompt_deep
-        prompt = tmpl.format(
-            context=ctx,
-            url=url,
-            zielgruppe=zielgruppe,
-            thema=thema,
-            lighthouse_data=lighthouse_data
-        )
+        if reasoning_mode == "fast":
+            prompt = tmpl.format(
+                url=url,
+                branche=branche,
+                zielgruppe=zielgruppe,
+                text=text,
+                lighthouse_data=lighthouse_data
+            )
+        else:
+            prompt = tmpl.format(
+                url=url,
+                branche=branche,
+                zielgruppe=zielgruppe,
+                text=text,
+                lighthouse_reports_combined=lighthouse_data  # dieselben Daten für beide Platzhalter
+            )
+
         resp = llm.invoke(prompt)
         result = resp.content if hasattr(resp, "content") else str(resp)
         return {"response": result, "prompt_used": prompt}
@@ -419,35 +513,52 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
 
     elif task == "landingpage_strategy":
         check_task_requirements(task, kwargs)
+
         url = kwargs.get("url", "")
+        angebot = kwargs.get("angebot", "").strip()
+        ziel = kwargs.get("ziel", "").strip()
+        zielgruppe = kwargs.get("zielgruppe", "Zielgruppe nicht definiert").strip()
+
+        # Website-HTML laden
         ctx_web = load_html(url)
+
+        # Optionaler PDF-Inhalt
         ctx_att = ""
         pdfp = kwargs.get("pdf_path", "")
         if pdfp and os.path.exists(pdfp):
             ctx_att = load_pdf(pdfp)
-        tmpl = (landingpage_strategy_contextual_prompt_fast
-                if reasoning_mode == "fast"
-                else landingpage_strategy_contextual_prompt_deep)
+
+        tmpl = (
+            landingpage_strategy_contextual_prompt_fast
+            if reasoning_mode == "fast"
+            else landingpage_strategy_contextual_prompt_deep
+        )
+
+        # Prompt-Befüllung
         if reasoning_mode == "fast":
             prompt = tmpl.format(
                 context_website=ctx_web,
-                context_anhang=ctx_att
+                context_anhang=ctx_att,
+                zielgruppe=zielgruppe,
+                angebot=angebot
             )
         else:
             prompt = tmpl.format(
                 context_website=ctx_web,
                 context_anhang=ctx_att,
-                rss_snippets=rss_snippets,
-                trends_insights=trends_insights,
-                destatis_stats=destatis_stats,
-                google_ads=google_ads,
-                facebook_ads=facebook_ads,
-                linkedin_ads=linkedin_ads
+                zielgruppe=zielgruppe,
+                ziel=ziel,
+                thema=angebot,
+                rss_snippets=kwargs.get("rss_snippets", "[Keine RSS-Daten]"),
+                trends_insights=kwargs.get("trends_insights", "[Keine Trenddaten]"),
+                destatis_stats=kwargs.get("destatis_stats", "[Keine Destatis-Daten]"),
+                google_ads=kwargs.get("google_ads", "[Keine Google Ads]"),
+                facebook_ads=kwargs.get("facebook_ads", "[Keine Facebook Ads]"),
+                linkedin_ads=kwargs.get("linkedin_ads", "[Keine LinkedIn Ads]")
             )
         resp = llm.invoke(prompt)
         result = resp.content if hasattr(resp, "content") else str(resp)
         return {"response": result, "prompt_used": prompt}
-
 
     elif task == "monthly_report":
         check_task_requirements(task, kwargs)
@@ -466,9 +577,6 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
 
     elif task == "tactical_actions":
         check_task_requirements(task, kwargs)
-        txt = kwargs.get("text", "")
-        url = kwargs.get("url", "")
-        cust_id = kwargs.get("customer_id")
 
         ctx = get_context_from_text_or_url(
             kwargs.get("text", ""),
@@ -476,13 +584,24 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
             kwargs.get("customer_id"),
             kwargs.get("pdf_path")
         )
+
         tmpl = (
             tactical_actions_prompt_fast
             if reasoning_mode == "fast"
             else tactical_actions_prompt_deep
         )
 
-        prompt = tmpl.format(context=ctx)
+        if reasoning_mode == "fast":
+            prompt = tmpl.format(context=ctx)
+        else:
+            prompt = tmpl.format(
+                context=ctx,
+                seo_summary=kwargs.get("seo_summary", "[Kein SEO-Audit verfügbar]"),
+                zielgruppe=kwargs.get("zielgruppe", "Zielgruppe nicht definiert"),
+                themen=kwargs.get("thema", "Kein Thema angegeben"),
+                zeitraum=kwargs.get("zeitraum", "Kein Zeitraum angegeben")
+            )
+
         resp = llm.invoke(prompt)
         result = resp.content if hasattr(resp, "content") else str(resp)
         return {"response": result, "prompt_used": prompt}
@@ -497,15 +616,14 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
         image_data = extract_images_from_url(url)
 
         if isinstance(image_data, list):
-            if reasoning_mode == "fast":
-                # SVGs ignorieren und auf 20 begrenzen
-                image_data = [img for img in image_data if not img['src'].lower().endswith(".svg")][:20]
-            else:
-                # Deep-Modus: Alle Bilder inkl. SVGs, bis zu 40
-                image_data = image_data[:40]
+            filtered_images = [
+                img for img in image_data
+                if not img["src"].lower().endswith(".svg")
+            ] if reasoning_mode == "fast" else image_data
 
+            limit = 20 if reasoning_mode == "fast" else 40
             img_context_lines = []
-            for idx, img in enumerate(image_data, 1):
+            for idx, img in enumerate(filtered_images[:limit], 1):
                 img_context_lines.append(f"Bild {idx}: {img['src']}")
                 if img["context"]:
                     img_context_lines.append(f"Kontext: {img['context']}")
@@ -514,7 +632,6 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
             image_context = f"[Fehler beim Laden der Bilder: {image_data.get('error')}]"
 
         from agent.prompts import alt_tag_writer_prompt_fast, alt_tag_writer_prompt_deep
-
         tmpl = alt_tag_writer_prompt_fast if reasoning_mode == "fast" else alt_tag_writer_prompt_deep
 
         prompt = tmpl.format(
@@ -530,26 +647,48 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
         return {"response": result, "prompt_used": prompt}
 
     elif task == "extract_topics":
-        # Für automatische Themenvorschläge (RSS/Trends/DESTATIS)
-        txt = kwargs.get("text", "")
-        prompt = f"""
-    Extrahiere maximal 5 relevante, aktuelle Themen oder Begriffe aus folgendem Inputtext. 
-    Diese sollen sich für weitere Recherche in Google Trends, RSS-News oder DESTATIS eignen.
+        check_task_requirements(task, kwargs)
 
-    Text:
-    {txt}
-    """
+        text = kwargs.get("text", "").strip()
+        if not text:
+            raise ValueError("❗ Kein Text übergeben für Topic-Extraktion.")
+
+        prompt = f"""
+Extrahiere maximal 5 relevante, aktuelle Themen oder Begriffe aus folgendem Inputtext. 
+Diese sollen sich für weitere Recherche in Google Trends, RSS-News oder DESTATIS eignen.
+
+Text:
+{text}
+"""
 
         resp = llm.invoke(prompt)
         result = resp.content if hasattr(resp, "content") else str(resp)
         return {"response": result, "prompt_used": prompt}
 
     elif task == "memory_write":
-        save_to_memory([kwargs.get("text", "")])
-        return {"response": "✅ Wissen gespeichert."}
+        check_task_requirements(task, kwargs)
+
+        content = kwargs.get("text", "").strip()
+        if not content:
+            raise ValueError("Kein Inhalt zum Speichern übergeben.")
+
+        customer_id = kwargs.get("customer_id", "")
+        if not customer_id:
+            raise ValueError("Kein Kunden-ID vorhanden.")
+
+        append_customer_memory(customer_id, content)
+        return {"response": f"🧠 Kontext gespeichert für Kunde {customer_id}."}
+
 
     elif task == "memory_search":
-        hits = search_memory(kwargs.get("query", ""))
+        query = kwargs.get("query", "").strip()
+        if not query:
+            raise ValueError("Kein Suchbegriff übergeben.")
+
+        hits = search_memory(query)
+        if not hits:
+            return {"response": "❌ Keine passenden Inhalte im Memory gefunden."}
+
         return {"response": "\n\n".join([doc.page_content for doc in hits])}
 
     else:

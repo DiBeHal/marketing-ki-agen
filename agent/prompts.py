@@ -124,71 +124,72 @@ Antwortstruktur:
 
 # ===== Cluster 3: Wettbewerbsanalyse =====
 competitive_analysis_prompt_fast = """
-Du bist ein erfahrener Marketinganalyst. Vergleiche die Online-Präsenz des Kunden mit 2–3 direkt genannten Mitbewerbern,  sowie 2-3 recherchierten von dir und identifiziere klare Unterschiede und Chancen zur Abgrenzung.
+# Aufgabe: Wettbewerbsanalyse für Online-Marketing
 
-### Aufgaben:
+Ziel: Analyse der Online-Positionierung von {kunde_name} im Vergleich zu den folgenden Wettbewerbern. Auf Basis des Vergleichs sollen klare Chancen zur Abgrenzung und Verbesserung der Online-Präsenz abgeleitet werden.
 
-1. Recherchiere zwei reale Firmen (Wettbewerber), die ähnliche Produkte/Dienstleistungen anbieten und die gleiche Zielgruppe ansprechen. Wähle:
-   - nur **bekannte oder auffindbare Firmen**
-   - aus der gleichen Branche oder mit direktem Angebot
-   - wenn möglich: ähnliche geografische Märkte (DACH, EU)
+## Kundendaten
+- Firma: {kunde_name}
+- Branche: {branche}
+- Zielgruppe: {zielgruppe}
+- Kontext / Website-Analyse: {context_kunde}
 
-2. Analysiere die folgenden Bereiche:
+## Wettbewerberliste (vom Kunden angegeben)
 
-**Website-Analyse**
-   - Menüführung & Navigationsstruktur
-   - Zielgruppenansprache & USPs
-   - Call-to-Actions (Position, Auffälligkeit)
-   - Visuelle Markenidentität & Wiedererkennung
+Folgende Wettbewerber sollen berücksichtigt werden:
+{wettbewerber_liste}
 
-**Externe Präsenz**
-   - Erwähnungen auf Fachseiten, Presseportalen, Branchenverzeichnissen
-   - Social-Media-Aktivität (Frequenz, Kanäle, Engagement)
+## Vergleich
+Erstelle eine strukturierte Vergleichstabelle mit {kunde_name} und allen genannten Wettbewerbern. Nutze diese Spalten:
 
-**Ads-Analyse** (falls Daten vorhanden)
-   - Google Ads: {google_ads}
-   - Facebook Ads: {facebook_ads}
-   - LinkedIn Ads: {linkedin_ads}
+| Kriterium                         | {kunde_name} | Wettbewerber 1 | Wettbewerber 2 | Wettbewerber 3 | Wettbewerber 4 | Wettbewerber 5 |
+|----------------------------------|--------------|----------------|----------------|----------------|----------------|----------------|
+| Website                          |              |                |                |                |                |                |
+| Positionierung                   |              |                |                |                |                |                |
+| Angebot / Leistungen             |              |                |                |                |                |                |
+| Tonalität / Sprache              |              |                |                |                |                |                |
+| UX/UI Design                     |              |                |                |                |                |                |
+| Sichtbarkeit (Google, Maps etc.)|              |                |                |                |                |                |
+| Branchenportale & Verzeichnisse |              |                |                |                |                |                |
+| Bewertungsplattformen           |              |                |                |                |                |                |
+| Social Media Aktivität          |              |                |                |                |                |                |
+| Online-Anzeigen (z. B. Ads)     |              |                |                |                |                |                |
+| SEO-Grundlagen (Meta/H1 etc.)   |              |                |                |                |                |                |
 
-⚠️ Bitte:
-- Antworte im Markdown-Stil
-- Vermeide vage Formulierungen wie „einige“, „manche“
-- Nutze Vergleichstabellen oder Bullet-Listen
-- Begründe Einschätzungen konkret anhand der Inhalte
-- Arbeite nur mit echten Firmen
-- Keine Platzhalter oder fiktiven Namen!
+*(Tabelle dynamisch anpassen je nach Anzahl der Wettbewerber)*
 
-Antwortstruktur:
+## Handlungsempfehlungen
+1. **Abgrenzung:** Wo und wie kann sich {kunde_name} klar positionieren, um sich von den Mitbewerbern abzuheben?
+2. **Verbesserungspotenziale:** Welche Bereiche der eigenen Online-Präsenz bieten die größten Chancen zur Optimierung?
+3. **Quick Wins & langfristige Maßnahmen:** Liste konkrete Schritte zur Verbesserung auf – kurzfristig wie strategisch.
 
-🔍 Wettbewerbsvergleich (tabellarisch):
-| Bereich            | Kunde                       | Mitbewerber A             | Mitbewerber B             |
-|--------------------|-----------------------------|----------------------------|----------------------------|
-| CTA-Positionierung | z. B. prominent auf Start    | z. B. unauffällig im Footer | z. B. sticky Button Header |
-| Social Media       | Aktiv auf LinkedIn, 2/Woche | inaktiv                    | aktiv, aber ohne Engagement |
-
-📌 Verbesserungschancen für den Kunden:
-1. ...
-2. ...
-
-🎯 Handlungsempfehlungen zur Differenzierung:
-1. ...
+Achte auf:
+- Branchenrelevanz und Zielgruppennähe
+- Klarheit und Prägnanz
+- konkrete, umsetzbare Empfehlungen
 """
+
 competitive_analysis_prompt_deep = """
-Du bist ein strategischer Wettbewerbsanalyst für digitale Präsenz. Führe eine vergleichende Tiefenanalyse zwischen dem Kunden und mehreren Mitbewerbern (genannten und recherchierten) durch. Gib präzise Einschätzungen mit konkreten Beispielen, tabellarischen Vergleichen und klaren Empfehlungen. 
+Du bist ein strategischer Wettbewerbsanalyst für digitale Präsenz. Führe eine vergleichende Tiefenanalyse zwischen dem Kunden, mehreren angegebenen Wettbewerbern sowie zwei recherchierten Unternehmen durch. Gib präzise Einschätzungen mit konkreten Beispielen, tabellarischen Vergleichen und klaren Empfehlungen.
 
 ### Aufgaben:
 
-Recherchiere vier reale Firmen (Wettbewerber), die ähnliche Produkte/Dienstleistungen anbieten und die gleiche Zielgruppe ansprechen. Wähle:
-   - nur **bekannte oder auffindbare Firmen**
-   - aus der gleichen Branche oder mit direktem Angebot
-   - wenn möglich: ähnliche geografische Märkte (DACH, EU)
+1. Analysiere den Kunden und alle manuell angegebenen Wettbewerber auf Basis der gelieferten Kontexte.
+2. Recherchiere zusätzlich zwei reale Wettbewerber, die:
+   - aus derselben Branche ({branche}) stammen
+   - ähnliche Leistungen und Zielgruppen adressieren
+   - online gut auffindbar sind (z. B. Google, Branchenportale, Maps)
+   - möglichst in vergleichbaren geografischen Märkten (DACH, EU) aktiv sind
 
-Eingaben:
+### Eingaben:
 - Kunde: {contexts_combined_kunde}
-- Mitbewerber: {contexts_combined_mitbewerber}
-- Ads: Google: {google_ads}, Facebook: {facebook_ads}, LinkedIn: {linkedin_ads}
+- Vorgegebene Wettbewerber: {contexts_combined_mitbewerber}
+- Recherchierte Wettbewerber: bitte selbstständig online ermitteln
+- Branche: {branche}
+- Zielgruppe: {zielgruppe}
+- Anzeigen: Google: {google_ads}, Facebook: {facebook_ads}, LinkedIn: {linkedin_ads}
 
-Analysefelder:
+### Analysefelder:
 
 1. **Website & Kommunikation**
    - Struktur & Menülogik
@@ -205,7 +206,7 @@ Analysefelder:
    - Ausgewertete Anzeigen (Google, FB, LinkedIn)
 
 4. **Zusätzliche relevante Wettbewerber**
-   - Auf Basis von Keyword-Umfeld oder thematischer Nähe
+   - Kurzvorstellung der recherchierten Unternehmen (Name, Branche, Website, Besonderheiten)
 
 5. **Strategische Bewertung**
    - Stärken, Lücken & Abgrenzungschancen
@@ -215,31 +216,30 @@ Analysefelder:
 - Vermeide Floskeln & Allgemeinplätze
 - Quantifiziere wo möglich (z. B. „3 CTAs auf Startseite“)
 - Begründe Einschätzungen konkret anhand der Inhalte
-- Arbeite nur mit echten Firmen
-- Keine Platzhalter oder fiktiven Namen!
+- Arbeite nur mit realen Firmen (keine fiktiven Namen!)
 
-Antwortstruktur:
+### Antwortstruktur:
 
-📌 Positionierung & Content-Fokus:
-- ...
+📌 **Positionierung & Content-Fokus**  
+...
 
-📊 Vergleichstabelle (zentrale Unterschiede):
+📊 **Vergleichstabelle (zentrale Unterschiede)**
 
-| Merkmal         | Kunde             | Mitbewerber A       | Mitbewerber B         |
-|------------------|--------------------|-----------------------|------------------------|
-| CTA              | 3 auf Startseite   | 1 im Footer           | 2, aber unklar formuliert |
-| LinkedIn         | 4 Posts/Monat      | inaktiv               | 6 Posts/Monat, hohe Likes |
+| Merkmal         | Kunde             | Mitbewerber 1       | Mitbewerber 2       | Recherchiert A       | Recherchiert B       |
+|------------------|--------------------|-----------------------|-----------------------|------------------------|------------------------|
+| CTA              |                    |                       |                       |                        |                        |
+| LinkedIn         |                    |                       |                       |                        |                        |
+| ...              |                    |                       |                       |                        |                        |
 
-🔍 Schwächen & Risiken:
-- ...
+🔍 **Schwächen & Risiken**  
+...
 
-✅ Chancen zur Differenzierung:
-- ...
+✅ **Chancen zur Differenzierung**  
+...
 
-🎯 Quick Wins vs. strategische Entwicklung:
-- ...
+🎯 **Quick Wins vs. strategische Entwicklung**  
+...
 """
-
 # ===== Cluster 4: Kampagnen =====
 
 # 4. Kampagnenplan
@@ -438,10 +438,6 @@ Du bist ein erfahrener SEO-Consultant. Tiefenanalyse: Führe ein umfassendes SEO
 
 Die Inhalte stammen aus mehreren Seiten der Domain (Startseite + wichtige Unterseiten):
 {contexts_combined}
-
-Zusätzliche Daten:
-Aktuelle Branchentrends (RSS): {rss_snippets}
-Google Trends: {trends_insights}
 
 Struktur der Analyse:
 
