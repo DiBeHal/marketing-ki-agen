@@ -501,8 +501,10 @@ elif task == "Alt-Tag Generator":
         params["pdf_path"] = optional_pdf_path
 
     st.markdown("### 🚀 Agentenlauf manuell starten")
-    if st.button("Agent starten"):
+    if st.button("Agent starten", key="alt_tag_start"):
         st.session_state.start_agent = True
+        st.session_state.params = params  # <-- wichtig für die Ausführung später
+        st.rerun()
 
 # -------------------------------
 # Externe Datenquellen (automatisch vs. manuell)
