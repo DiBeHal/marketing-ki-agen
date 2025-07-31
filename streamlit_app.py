@@ -418,20 +418,24 @@ elif task == "Landingpage Strategie":
     zielgruppe = st.text_input("👥 Zielgruppe")
     angebot = st.text_input("💡 Angebot")
 
-    # Fallback wenn keine Zielgruppe angegeben
+    # Zielgruppe-Fallback robust absichern
     zielgruppe_final = zielgruppe.strip() or "Zielgruppe noch nicht definiert"
+    angebot_final = angebot.strip() or ""
 
     params = {
         "task": task_id,
         "zielgruppe": zielgruppe_final,
-        "angebot": angebot,
-        "url": url,
-        "text": customer_memory + "\n\n" + context,
+        "angebot": angebot_final,
+        "url": url.strip(),
+        "text": (customer_memory + "\n\n" + context).strip(),
         "customer_id": customer_id
     }
 
     if optional_pdf_path:
         params["pdf_path"] = optional_pdf_path
+
+    # Extra-Sicherung: sicherstellen, dass Feld existiert
+    params["zielgruppe"] = params.get("zielgruppe", "Zielgruppe noch nicht definiert").strip()
 
 elif task == "Monatsreport":
     task_id = "monthly_report"
@@ -459,7 +463,9 @@ elif task == "Marketingmaßnahmen planen":
     zeitfenster = st.text_input("🗓️ Zeitraum")
 
     combined_context = (customer_memory + "\n\n" + context).strip()
-    if not ziel and not zeitfenster and not combined_context:
+
+    # Benutzerwarnung, wenn alles leer
+    if not ziel and not zeitfenster and not combined_context and not customer_id:
         st.error("❗ Bitte gib mindestens Ziel, Zeitraum oder Kontext an.")
         st.stop()
 
@@ -470,6 +476,10 @@ elif task == "Marketingmaßnahmen planen":
         "text": combined_context,
         "customer_id": customer_id
     }
+
+    # Robust: leeres Textfeld absichern
+    params["text"] = params.get("text", "").strip()
+
     if optional_pdf_path:
         params["pdf_path"] = optional_pdf_path
 
@@ -499,12 +509,6 @@ elif task == "Alt-Tag Generator":
 
     if optional_pdf_path:
         params["pdf_path"] = optional_pdf_path
-
-    st.markdown("### 🚀 Agentenlauf manuell starten")
-    if st.button("Agent starten", key="alt_tag_start"):
-        st.session_state.start_agent = True
-        st.session_state.params = params  # <-- wichtig für die Ausführung später
-        st.rerun()
 
 # -------------------------------
 # Externe Datenquellen (automatisch vs. manuell)
@@ -616,16 +620,28 @@ if params.get("use_auto_sources") and not st.session_state.get("themen_bestaetig
             st.rerun()
 
 # -------------------------------
-# Manueller Start-Button, wenn keine Themenvorschläge notwendig sind
+# Manueller Start-Button: Nur wenn keine Themen vorgeschlagen oder bereits bestätigt
 # -------------------------------
-if not (params.get("use_auto_sources") and not st.session_state.get("themen_bestaetigt")):
-    if st.button("🤖 KI Agent starten", key="manual_start_button"):
-        st.session_state.start_agent = True
+if not params.get("use_auto_sources") or st.session_state.get("themen_bestaetigt"):
+    if "confirm_edit" not in st.session_state or not st.session_state.confirm_edit:
+        if st.button("🤖 KI Agent starten", key="manual_start_button"):
+            st.session_state.start_agent = True
 
 # -------------------------------
 # Initialer Agent-Call
 # -------------------------------
 if ((not params.get("use_auto_sources")) or st.session_state.get("themen_bestaetigt")) and st.session_state.start_agent:
+
+    # Validierung für Tasks mit Mindestanforderungen
+    required_fallback_keys = {
+        "tactical_actions": ["text", "url", "customer_id"],
+        "seo_optimization": ["text", "url", "customer_id"],
+        "content_analysis": ["text", "url", "customer_id"],
+    }
+    fallback_keys = required_fallback_keys.get(task_id, [])
+    if fallback_keys and not any(params.get(k) for k in fallback_keys):
+        st.error(f"❗ Der Agent benötigt mindestens einen dieser Werte: {', '.join(fallback_keys)}.")
+        st.stop()
 
     # --------------------------------
     # Mapping für lesbare Tasknamen → interne Task-IDs

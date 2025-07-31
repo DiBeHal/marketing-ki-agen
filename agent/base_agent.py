@@ -108,28 +108,37 @@ def search_google(brand_or_domain: str) -> List[str]:
         f"https://news.google.com/search?q={brand}"
     ]
 
-def get_context_from_text_or_url(text: str, url: str, customer_id: Optional[str] = None) -> str:
+def get_context_from_text_or_url(text: str, url: str, customer_id: Optional[str] = None, pdf_path: Optional[str] = None) -> str:
     """
-    Liefert den sinnvollsten Kontext für den Prompt zurück – entweder Text, HTML oder Kundenspeicher.
+    Liefert den sinnvollsten Kontext für den Prompt zurück – inklusive optionalem PDF-Inhalt.
     """
     text = text.strip() if text else ""
     url = url.strip() if url else ""
 
-    if text:
-        return text
-
-    if url:
-        try:
-            return load_html(url)
-        except Exception as e:
-            return f"[Fehler beim Laden der URL {url}: {e}]"
+    parts = []
 
     if customer_id:
         memory = load_customer_memory(customer_id)
         if memory:
-            return memory
+            parts.append(memory)
 
-    raise ValueError("Kein verwertbarer Inhalt vorhanden (Text, URL oder Kunden-Memory).")
+    if text:
+        parts.append(text)
+
+    if url:
+        try:
+            html = load_html(url)
+            parts.append(html)
+        except Exception as e:
+            parts.append(f"[Fehler beim Laden der URL {url}: {e}]")
+
+    if pdf_path and os.path.exists(pdf_path):
+        parts.append("\n[PDF-Inhalt]\n" + load_pdf(pdf_path))
+
+    if not parts:
+        raise ValueError("Kein verwertbarer Inhalt vorhanden (Text, URL, PDF oder Kunden-Memory).")
+
+    return "\n\n".join(parts)
 
 def fetch_rss_snippets(feeds: List[str], limit: int = 3) -> str:
     snippets = []
@@ -216,7 +225,13 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
 
     if task == "content_analysis":
         check_task_requirements(task, kwargs)
-        ctx = get_context_from_text_or_url(kwargs.get("text", ""), kwargs.get("url", ""), kwargs.get("customer_id"))
+        ctx = get_context_from_text_or_url(
+            kwargs.get("text", ""),
+            kwargs.get("url", ""),
+            kwargs.get("customer_id"),
+            kwargs.get("pdf_path")
+        )
+
         tmpl = content_analysis_prompt_fast if reasoning_mode == "fast" else content_analysis_prompt_deep
         prompt = tmpl.format(
             context=ctx,
@@ -230,7 +245,7 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
         zg = kwargs.get("zielgruppe", "")
         ton = kwargs.get("tonalitaet", "")
         th = kwargs.get("thema", "")
-
+        ctx = get_context_from_text_or_url(kwargs.get("text", ""), kwargs.get("url", ""), kwargs.get("customer_id"), kwargs.get("pdf_path"))
         tmpl = content_write_prompt_fast if reasoning_mode == "fast" else content_write_prompt_deep
         prompt = tmpl.format(
             zielgruppe=zg,
@@ -308,9 +323,9 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
             keywords=keywords
         )
 
-        result = call_llm(prompt)
+        resp = llm.invoke(prompt)
+        result = resp.content if hasattr(resp, "content") else str(resp)
         return {"response": result, "prompt_used": prompt}
-
 
     elif task in ["seo_optimize", "seo_optimization"]:
         check_task_requirements("seo_optimization", kwargs)
@@ -319,12 +334,7 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
         cust_id = kwargs.get("customer_id")
         audit_pdf = kwargs.get("pdf_path")
 
-        full = get_context_from_text_or_url(txt, url, kwargs.get("customer_id"))
-        if url:
-            full += "\n\nWebsite-Text:\n" + load_html(url)
-            full += "\n\nSEO-Signale:\n" + json.dumps(extract_seo_signals(url), indent=2)
-        if audit_pdf and os.path.exists(audit_pdf):
-            full += "\n\nSEO Audit Report:\n" + load_pdf(audit_pdf)
+        full = get_context_from_text_or_url(txt, url, cust_id, audit_pdf)
         tmpl = (
             seo_optimization_prompt_fast
             if reasoning_mode == "fast"
@@ -339,7 +349,10 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
     elif task == "campaign_plan":
         check_task_requirements(task, kwargs)
         ctx = get_context_from_text_or_url(
-            kwargs.get("text", ""), kwargs.get("url", ""), kwargs.get("customer_id")
+            kwargs.get("text", ""),
+            kwargs.get("url", ""),
+            kwargs.get("customer_id"),
+            kwargs.get("pdf_path")
         )
         zg = kwargs.get("zielgruppe", "")
         th = kwargs.get("thema", "")
@@ -384,7 +397,12 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
             lighthouse_data = f"[Fehler: {e}]"
 
         # 🧠 Kontexttext für den Prompt ergänzen (aus Text, URL oder Customer Memory)
-        ctx = get_context_from_text_or_url(kwargs.get("text", ""), url, kwargs.get("customer_id"))
+        ctx = get_context_from_text_or_url(
+            kwargs.get("text", ""),
+            kwargs.get("url", ""),
+            kwargs.get("customer_id"),
+            kwargs.get("pdf_path")
+        )
 
         tmpl = seo_lighthouse_prompt_fast if reasoning_mode == "fast" else seo_lighthouse_prompt_deep
         prompt = tmpl.format(
@@ -436,9 +454,7 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
         ctx = get_context_from_text_or_url(
             kwargs.get("text", ""), kwargs.get("url", ""), kwargs.get("customer_id")
         )
-        pdfp = kwargs.get("pdf_path")
-        if pdfp and os.path.exists(pdfp):
-            ctx += "\n\nPDF Anhang:\n" + load_pdf(pdfp)
+        ctx = get_context_from_text_or_url(kwargs.get("text", ""), kwargs.get("url", ""), kwargs.get("customer_id"), kwargs.get("pdf_path"))
         tmpl = (monthly_report_prompt_fast
                 if reasoning_mode == "fast"
                 else monthly_report_prompt_deep)
@@ -454,12 +470,12 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
         url = kwargs.get("url", "")
         cust_id = kwargs.get("customer_id")
 
-        ctx = get_context_from_text_or_url(txt, url, cust_id)
-
-        pdfp = kwargs.get("pdf_path")
-        if pdfp and os.path.exists(pdfp):
-            ctx += "\n\n[Ergänzende Analyse aus PDF]:\n" + load_pdf(pdfp)
-
+        ctx = get_context_from_text_or_url(
+            kwargs.get("text", ""),
+            kwargs.get("url", ""),
+            kwargs.get("customer_id"),
+            kwargs.get("pdf_path")
+        )
         tmpl = (
             tactical_actions_prompt_fast
             if reasoning_mode == "fast"
@@ -479,9 +495,17 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
         text = kwargs.get("text", "")
 
         image_data = extract_images_from_url(url)
+
         if isinstance(image_data, list):
+            if reasoning_mode == "fast":
+                # SVGs ignorieren und auf 20 begrenzen
+                image_data = [img for img in image_data if not img['src'].lower().endswith(".svg")][:20]
+            else:
+                # Deep-Modus: Alle Bilder inkl. SVGs, bis zu 40
+                image_data = image_data[:40]
+
             img_context_lines = []
-            for idx, img in enumerate(image_data[:13], 1):
+            for idx, img in enumerate(image_data, 1):
                 img_context_lines.append(f"Bild {idx}: {img['src']}")
                 if img["context"]:
                     img_context_lines.append(f"Kontext: {img['context']}")
