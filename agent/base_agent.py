@@ -468,9 +468,12 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
 
     elif task == "seo_lighthouse":
         check_task_requirements(task, kwargs)
+
         url = kwargs.get("url", "")
         zielgruppe = kwargs.get("zielgruppe", "")
         thema = kwargs.get("thema", "")
+        branche = kwargs.get("branche", "Allgemein")
+        text = kwargs.get("text", "")
 
         lighthouse_data = "(Keine Lighthouse-Daten verfügbar)"
         try:
@@ -482,8 +485,8 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
 
         # 🧠 Kontexttext für den Prompt ergänzen (aus Text, URL oder Customer Memory)
         ctx = get_context_from_text_or_url(
-            kwargs.get("text", ""),
-            kwargs.get("url", ""),
+            text,
+            url,
             kwargs.get("customer_id"),
             kwargs.get("pdf_path")
         )
@@ -503,7 +506,7 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
                 branche=branche,
                 zielgruppe=zielgruppe,
                 text=text,
-                lighthouse_reports_combined=lighthouse_data  # dieselben Daten für beide Platzhalter
+                lighthouse_reports_combined=lighthouse_data
             )
 
         resp = llm.invoke(prompt)

@@ -387,12 +387,21 @@ elif task == "SEO Optimierung":
 
 elif task == "Technisches SEO (Lighthouse)":
     task_id = "seo_lighthouse"
+    url = st.text_input("🌐 Website-URL (Pflicht)", placeholder="https://www.beispielseite.de")
     if not url:
         st.error("❗ Verpflichtende URL angeben.")
         st.stop()
+    zielgruppe = st.text_input("👥 Zielgruppe (optional)", placeholder="z. B. Fachpublikum, Neukunden, KMU")
+    thema = st.text_input("🧩 Fokus oder Thema der Website (optional)", placeholder="z. B. Performance, UX, Dienstleistung")
+    branche = st.text_input("🏢 Branche oder Geschäftsbereich (optional)", placeholder="z. B. Agentur, Einzelhandel, SaaS")
+
     params = {
         "task": task_id,
         "url": url,
+        "zielgruppe": zielgruppe,
+        "thema": thema,
+        "branche": branche,
+        "text": (customer_memory + "\n\n" + context).strip(),
         "customer_id": customer_id
     }
     if optional_pdf_path:
@@ -526,6 +535,23 @@ elif task == "Alt-Tag Generator":
 
     if optional_pdf_path:
         params["pdf_path"] = optional_pdf_path
+
+elif task == "Themen extrahieren":
+    task_id = "extract_topics"
+
+    params = {
+        "task": task_id,
+        "text": (customer_memory + "\n\n" + context).strip(),
+        "url": url,
+        "customer_id": customer_id
+    }
+    if optional_pdf_path:
+        params["pdf_path"] = optional_pdf_path
+
+    # ❗ Absicherung: mindestens eine Datenquelle muss vorhanden sein
+    if not (params["text"].strip() or url or customer_id or optional_pdf_path):
+        st.error("❗ Bitte gib mindestens Text, URL, Kundenkontext oder PDF an.")
+        st.stop()
 
 # -------------------------------
 # Externe Datenquellen (automatisch vs. manuell)
