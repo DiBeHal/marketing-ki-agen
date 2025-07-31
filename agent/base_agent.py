@@ -14,6 +14,59 @@ import requests
 from pytrends.request import TrendReq
 from langchain_openai import ChatOpenAI
 
+def has_any(*args):
+    return any(arg and str(arg).strip() for arg in args)
+
+def check_task_requirements(task: str, kwargs: dict):
+    requirements = TASK_REQUIREMENTS.get(task, {})
+    
+    for key, rule in requirements.items():
+        if rule == "required" and not kwargs.get(key):
+            raise ValueError(f"Task '{task}' benötigt zwingend: {key}")
+        if rule == "any_of":
+            if not has_any(*[kwargs.get(k) for k in key.split("|")]):
+                raise ValueError(f"Task '{task}' benötigt mindestens einen dieser Werte: {key}")
+
+TASK_REQUIREMENTS = {
+    "seo_audit": {
+        "url": "required"
+    },
+    "seo_optimization": {
+        "text|url|customer_id": "any_of"
+    },
+    "seo_lighthouse": {
+        "url": "required"
+    },
+    "content_analysis": {
+        "text|url|customer_id": "any_of"
+    },
+    "content_writing": {
+        "zielgruppe": "required",
+        "tonalitaet": "required",
+        "thema": "required"
+    },
+    "campaign_plan": {
+        "text|url|customer_id": "any_of",
+        "zielgruppe": "required",
+        "thema": "required"
+    },
+    "landingpage_strategy": {
+        "url": "required"
+    },
+    "monthly_report": {
+        "customer_id": "required"
+    },
+    "tactical_actions": {
+        "text|url|customer_id": "any_of"
+    },
+    "alt_tag_writer": {
+        "url": "required"
+    },
+    "extract_topics": {
+        "text": "required"
+    }
+}
+
 from agent.prompts import (
     content_analysis_prompt_fast, content_analysis_prompt_deep,
     content_write_prompt_fast, content_write_prompt_deep,
@@ -162,6 +215,7 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
 
 
     if task == "content_analysis":
+        check_task_requirements(task, kwargs)
         ctx = get_context_from_text_or_url(kwargs.get("text", ""), kwargs.get("url", ""), kwargs.get("customer_id"))
         tmpl = content_analysis_prompt_fast if reasoning_mode == "fast" else content_analysis_prompt_deep
         prompt = tmpl.format(
@@ -172,13 +226,10 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
         )
 
     elif task == "content_writing":
-        zg = kwargs.get("zielgruppe") or ""
-        ton = kwargs.get("tonalitaet") or ""
-        th  = kwargs.get("thema") or ""
-
-        # Diese Prüfung nur beim ersten Call, nicht bei Rückfragen
-        if kwargs.get("is_follow_up") != True and not all([zg, ton, th]):
-            raise ValueError("Zielgruppe, Tonalität und Thema sind Pflichtfelder.")
+        check_task_requirements(task, kwargs)
+        zg = kwargs.get("zielgruppe", "")
+        ton = kwargs.get("tonalitaet", "")
+        th = kwargs.get("thema", "")
 
         tmpl = content_write_prompt_fast if reasoning_mode == "fast" else content_write_prompt_deep
         prompt = tmpl.format(
@@ -191,6 +242,7 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
         )
 
     elif task == "competitive_analysis":
+        check_task_requirements(task, kwargs)
         ctx_k = load_html(kwargs.get("eigene_url", ""))
         mitbewerber_urls = kwargs.get("wettbewerber_urls", [])
         mitbewerber_kontexte = []
@@ -233,6 +285,7 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
         )
 
     elif task == "seo_audit":
+        check_task_requirements(task, kwargs)
         url = kwargs.get("url", "")
         zielgruppe = kwargs.get("zielgruppe", "")
         thema = kwargs.get("thema", "")
@@ -260,9 +313,12 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
 
 
     elif task in ["seo_optimize", "seo_optimization"]:
+        check_task_requirements("seo_optimization", kwargs)
         txt = kwargs.get("text", "")
         url = kwargs.get("url", "")
+        cust_id = kwargs.get("customer_id")
         audit_pdf = kwargs.get("pdf_path")
+
         full = get_context_from_text_or_url(txt, url, kwargs.get("customer_id"))
         if url:
             full += "\n\nWebsite-Text:\n" + load_html(url)
@@ -274,24 +330,37 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
             if reasoning_mode == "fast"
             else seo_optimization_prompt_deep
         )
-        prompt = tmpl.format(context=full)
+        prompt = tmpl.format(contexts_combined=full)
         resp = llm.invoke(prompt)
         result = resp.content if hasattr(resp, "content") else str(resp)
         return {"response": result, "prompt_used": prompt}
 
 
     elif task == "campaign_plan":
+        check_task_requirements(task, kwargs)
         ctx = get_context_from_text_or_url(
             kwargs.get("text", ""), kwargs.get("url", ""), kwargs.get("customer_id")
         )
-        tmpl = (campaign_plan_prompt_fast
-                if reasoning_mode == "fast"
-                else campaign_plan_prompt_deep)
+        zg = kwargs.get("zielgruppe", "")
+        th = kwargs.get("thema", "")
+
+        tmpl = (
+            campaign_plan_prompt_fast
+            if reasoning_mode == "fast"
+            else campaign_plan_prompt_deep
+        )
+
         if reasoning_mode == "fast":
-            prompt = tmpl.format(context=ctx)
+            prompt = tmpl.format(
+                context=ctx,
+                zielgruppe=zg,
+                thema=th
+            )
         else:
             prompt = tmpl.format(
                 context=ctx,
+                zielgruppe=zg,
+                thema=th,
                 rss_snippets=rss_snippets,
                 trends_insights=trends_insights,
                 destatis_stats=destatis_stats
@@ -301,6 +370,7 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
         return {"response": result, "prompt_used": prompt}
 
     elif task == "seo_lighthouse":
+        check_task_requirements(task, kwargs)
         url = kwargs.get("url", "")
         zielgruppe = kwargs.get("zielgruppe", "")
         thema = kwargs.get("thema", "")
@@ -330,9 +400,8 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
 
 
     elif task == "landingpage_strategy":
+        check_task_requirements(task, kwargs)
         url = kwargs.get("url", "")
-        if not url:
-            raise ValueError("URL für Landingpage-Strategie fehlt.")
         ctx_web = load_html(url)
         ctx_att = ""
         pdfp = kwargs.get("pdf_path", "")
@@ -363,6 +432,7 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
 
 
     elif task == "monthly_report":
+        check_task_requirements(task, kwargs)
         ctx = get_context_from_text_or_url(
             kwargs.get("text", ""), kwargs.get("url", ""), kwargs.get("customer_id")
         )
@@ -379,22 +449,30 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
 
 
     elif task == "tactical_actions":
-        ctx = get_context_from_text_or_url(
-            kwargs.get("text", ""), kwargs.get("url", ""), kwargs.get("customer_id")
-        )
+        check_task_requirements(task, kwargs)
+        txt = kwargs.get("text", "")
+        url = kwargs.get("url", "")
+        cust_id = kwargs.get("customer_id")
+
+        ctx = get_context_from_text_or_url(txt, url, cust_id)
+
         pdfp = kwargs.get("pdf_path")
         if pdfp and os.path.exists(pdfp):
             ctx += "\n\n[Ergänzende Analyse aus PDF]:\n" + load_pdf(pdfp)
-        tmpl = (tactical_actions_prompt_fast
-                if reasoning_mode == "fast"
-                else tactical_actions_prompt_deep)
+
+        tmpl = (
+            tactical_actions_prompt_fast
+            if reasoning_mode == "fast"
+            else tactical_actions_prompt_deep
+        )
+
         prompt = tmpl.format(context=ctx)
         resp = llm.invoke(prompt)
         result = resp.content if hasattr(resp, "content") else str(resp)
         return {"response": result, "prompt_used": prompt}
 
-
     elif task == "alt_tag_writer":
+        check_task_requirements(task, kwargs)
         url = kwargs.get("url", "")
         branche = kwargs.get("branche", "Allgemein")
         zielgruppe = kwargs.get("zielgruppe", "Kunden")
@@ -430,9 +508,6 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
     elif task == "extract_topics":
         # Für automatische Themenvorschläge (RSS/Trends/DESTATIS)
         txt = kwargs.get("text", "")
-        if not txt:
-            raise ValueError("Text zur Themenextraktion fehlt.")
-
         prompt = f"""
     Extrahiere maximal 5 relevante, aktuelle Themen oder Begriffe aus folgendem Inputtext. 
     Diese sollen sich für weitere Recherche in Google Trends, RSS-News oder DESTATIS eignen.

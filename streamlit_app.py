@@ -582,23 +582,35 @@ if params.get("use_auto_sources") and not st.session_state.get("themen_bestaetig
     st.session_state.auto_topics = proposed_topics
     st.session_state.final_topics = proposed_topics
 
+    # Nur initial setzen – oder nach Reset
+    if "editable_topics" not in st.session_state or st.session_state.get("reset_topics", False):
+        st.session_state.editable_topics = "\n".join(proposed_topics)
+        st.session_state.reset_topics = False
+
     st.markdown("### 🧠 Themenvorschlag des Agenten:")
     editable_topics = st.text_area(
         "✏️ Bearbeite oder lösche die vorgeschlagenen Themen (ein Thema pro Zeile):",
-        value="\n".join(proposed_topics),
-        height=150,
-        key="editable_topics"
+        value=st.session_state.editable_topics,
+        height=150
     )
 
-    if st.button("✅ Themen übernehmen und starten", key="confirm_edit"):
-        user_topics = [line.strip() for line in editable_topics.splitlines() if line.strip()]
-        if not user_topics:
-            st.warning("Bitte gib mindestens ein Thema an.")
-            st.stop()
-        else:
-            params["topic_keywords"] = user_topics
-            st.session_state.themen_bestaetigt = True
-            st.session_state.start_agent = True  # Trigger Agent-Ausführung
+    st.session_state.editable_topics = editable_topics
+
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        if st.button("✅ Themen übernehmen und starten", key="confirm_edit"):
+            user_topics = [line.strip() for line in editable_topics.splitlines() if line.strip()]
+            if not user_topics:
+                st.warning("Bitte gib mindestens ein Thema an.")
+                st.stop()
+            else:
+                params["topic_keywords"] = user_topics
+                st.session_state.themen_bestaetigt = True
+                st.session_state.start_agent = True
+                st.rerun()
+    with col2:
+        if st.button("🗘 Themen zurücksetzen", key="reset_topics_button"):
+            st.session_state.reset_topics = True
             st.rerun()
 
 # -------------------------------
@@ -607,8 +619,6 @@ if params.get("use_auto_sources") and not st.session_state.get("themen_bestaetig
 if not (params.get("use_auto_sources") and not st.session_state.get("themen_bestaetigt")):
     if st.button("🤖 KI Agent starten", key="manual_start_button"):
         st.session_state.start_agent = True
-
-
 
 # -------------------------------
 # Initialer Agent-Call
@@ -620,7 +630,7 @@ if ((not params.get("use_auto_sources")) or st.session_state.get("themen_bestaet
     # --------------------------------
     task_map = {
         "Content Analyse": "content_analysis",
-        "Content Writing": "content_write",
+        "Content Writing": "content_writing",
         "Wettbewerbsanalyse": "competitive_analysis",
         "SEO Audit": "seo_audit",
         "SEO Optimierung": "seo_optimization",
