@@ -77,11 +77,6 @@ from agent.prompts import (
     alt_tag_writer_prompt_deep
 )
 
-
-from agent.prompts import (
-    alt_tag_writer_prompt_fast, alt_tag_writer_prompt_deep
-)
-
 from agent.clarifier import extract_questions_from_response, merge_clarifications
 from agent.tools.lighthouse_runner import run_lighthouse
 from agent.loader import load_html, extract_seo_signals, load_pdf
@@ -183,7 +178,7 @@ def fetch_destatis_stats(codes: List[str]) -> str:
             continue
     return "\n".join(stats)
 
-def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional[str] = None,
+def run_agent(task: str, conversation_id: Optional[str] = None,
               clarifications: Optional[Dict[str, str]] = None, **kwargs: Any) -> Dict[str, Any]:
     if conversation_id is None:
         conversation_id = str(uuid.uuid4())
@@ -363,8 +358,6 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
             kwargs.get("pdf_path")
         )
         seo = extract_seo_signals(html)
-
-        tmpl = seo_audit_prompt_fast if reasoning_mode == "fast" else seo_audit_prompt_deep
 
         tmpl = seo_audit_prompt_deep
         prompt = tmpl.format(
