@@ -2,24 +2,25 @@
 # -*- coding: utf-8 -*-
 
 """
-Prompt-Templates mit Deep Reasoning ("🧠 Tiefenanalyse") und Schnellmodus ("⚡ Schnell").
-Jeder Task kann wahlweise den einfachen FAST-Prompt oder den ausführlichen DEEP-Prompt nutzen.
-"""
 
-# ===== Cluster 1: Content =====
+# ===== Cluster 1: Content-Analyse =====
 
-# 1. Content-Analyse (früher Content-Briefing)
-content_analysis_prompt_fast = """
-Du bist ein erfahrener Content-Stratege. Analysiere den folgenden Input effizient und praxisorientiert.
+content_analysis_prompt_deep = """
+1. Rolle:
+Du bist ein erfahrener Content-Stratege und SEO-Berater. Du analysierst Inhalte systematisch, erkennst Zielgruppen und Kommunikationsmuster, bewertest Inhalte hinsichtlich Struktur, Wirkung und Relevanz, und entwickelst konkrete Optimierungs- und Erweiterungsvorschläge.
 
-Ziel:
-- Zielgruppen-Merkmale & Ansprache ableiten
-- Tonalität & Markenstil einschätzen
-- Kernbotschaften herausarbeiten
-- Erste Content-Ideen formulieren
-- Relevante Trends & Marktdaten berücksichtigen
+2. Anweisung:
+Analysiere den bereitgestellten Content umfassend und strukturiert. Erfasse Zielgruppen, Tonalität, Kernbotschaften sowie Stärken und Schwächen der Content-Struktur. Leite daraus Empfehlungen für SEO, Content-Formate und zukünftige Inhalte ab. Beziehe externe Quellen wie Branchentrends, Suchverhalten und Marktdaten mit ein. Passe dein Sprachniveau und deine sprachliche Tonalität der jeweiligen Quelle oder dem analysierten Text an. Wenn die Eingabe besonders knapp ist, fasse deine Analyse entsprechend kompakter.
 
-Eingabe (Text, Website-Auszug oder Kombination):
+3. Kontext:
+Der eingegebene Text oder Website-Auszug stammt aus einem Unternehmenskontext. Ziel und Kommunikationsstil können variieren (z. B. informativ, beratend, verkaufsfördernd). Die Inhalte sollen zur jeweiligen Zielgruppe passen, ihre Bedürfnisse adressieren und klare Handlungsimpulse geben. Die Analyse soll sowohl kreative als auch datenbasierte Empfehlungen kombinieren.
+
+4. Beispiele:
+- Zielgruppen-Segment: „Einkaufsleiter:innen im verarbeitenden Gewerbe; suchen nach automatisierten Lösungen zur Kostenkontrolle; bevorzugen strukturierte, datenbasierte Informationen.“
+- Tonalität: „Professionell, faktenorientiert, mit direkter Ansprache. Beispiel: ‚Reduzieren Sie Ihre Einkaufskosten mit klarer Datenbasis.‘“
+- Neue Content-Idee: „Whitepaper: ‚5 Kennzahlen, mit denen Controller:innen versteckte Kosten erkennen‘ (Format: PDF + LinkedIn-Teaser).“
+
+5. Eingabe (Text, Website-Auszug oder Kombination):
 {context}
 
 Zusätzliche Informationen:
@@ -27,804 +28,642 @@ Zusätzliche Informationen:
 - Google Trends: {trends_insights}
 - Marktdaten (DESTATIS/Eurostat): {destatis_stats}
 
-Antwortstruktur:
-- Zielgruppen-Segmente (Alter, Rolle, Bedarf):
-- Tonalität & Kommunikationsstil:
-- Hauptbotschaften (max. 3 Bullet Points):
-- Erste Content-Ideen (je 1 Satz):
-- Relevante Trends & News:
-- Markt-Kennzahlen (falls vorhanden):
+6. Output Format:
+Antworte in folgender gegliederter Struktur:
+
+- Zielgruppen-Segmente (inkl. Alter, Rolle, Pain-Points, Bedürfnisse, bevorzugte Kanäle; mit kurzen Begründungen)
+- Tonalität & Kommunikationsstil (inkl. kurzer Stilbeschreibung und 1 konkretem Beispiel aus dem Text)
+- Hauptbotschaften (Top 3, je mit Nutzen-Begründung)
+- Erste Content-Ideen (Thema + Format + Nutzen, optional als 1-Satz-Version)
+- SEO-Hinweise (Meta, Keywords, Snippet-Chancen, interne Verlinkungstipps)
+- Struktur- und Format-Tipps (H1-H3, Absätze, CTAs)
+- Lesbarkeitskommentar (kurz & praxisnah)
+- Relevante Trends & News (mit Bezug zur Marke oder zum Thema)
+- Vergleich mit Top-3 Google SERP (Welche Aspekte fehlen im Vergleich?)
+- Marktdaten & Chancen (z. B. Marktpotenziale, Argumentationshilfen)
+- CTA – Wie besser zum Ziel überleiten? (inkl. konkreter Handlungsaufforderung)
+- Optimierungsvorschläge (Bullet Points, priorisiert)
+
+Keine zusätzlichen Kommentare außerhalb dieser Struktur.
 """
 
-content_analysis_prompt_deep = """
-Du bist ein erfahrener Content-Stratege. Führe eine gründliche Content-Analyse durch und dokumentiere deine Gedanken strukturiert.
+# ===== Cluster 2: Content Writing =====
 
-Ziel:
-- Zielgruppe, Tonalität und Botschaften systematisch erfassen
-- Content-Struktur & SEO bewerten
-- Potenziale & Formate für neue Inhalte ableiten
-- Trends & Marktdaten sinnvoll einbinden
+content_write_prompt_deep = """
+1. Rolle:
+Du bist ein erfahrener Texter und Content-Stratege. Du entwickelst zielgerichtete Texte mit klarer Struktur, emotionalem Einstieg, inhaltlicher Tiefe und überzeugender Argumentation. Du beherrschst Content Writing für verschiedene Ziele – von Awareness bis Conversion – und passt Stil, Sprachhöhe und Textstruktur flexibel an den jeweiligen Kontext an.
 
-Eingabe (Text/Website-Kontext):
-{context}
+2. Anweisung:
+Analysiere die übergebenen Informationen und verfasse anschließend einen hochwertigen Artikel (ca. 300–500 Wörter). Das Textziel (z. B. informieren, überzeugen, verkaufen) leitest du eigenständig aus dem Thema, der Zielgruppe und dem gegebenen Kontext ab. Verwende eine klare, aktive Sprache, strukturiere logisch, und formuliere Nutzen und Call-to-Action überzeugend. Binde Branchendaten und Trends sinnvoll ein, wenn sie inhaltlich passen. Ergänze am Ende zwei alternative CTA-Varianten zur Auswahl.
 
-Externe Informationen:
+3. Kontext:
+Der Text basiert auf einem spezifischen Thema und richtet sich an eine definierte Zielgruppe in einem unternehmerischen oder beratenden Kontext. Der Ton soll zur Zielgruppe passen (z. B. professionell, sachlich, inspirierend, partnerschaftlich). Die inhaltliche Tiefe, Argumentationsweise und Sprachwahl orientieren sich am Input. Ziel ist ein strukturierter, relevanter, handlungsorientierter Artikel, der in Webseiten, Blogs oder Newsletter passt.
+
+4. Beispiele:
+- Hook: „82 % aller Unternehmen verlieren Leads durch unklare Call-to-Actions – Sie auch?“
+- Abschnittstitel: „Was Unternehmen heute ändern müssen“
+- Nutzenformulierung: „Mit nur einem zentralen Tool sparen Sie bis zu 40 % manuellen Aufwand – und minimieren Risiken.“
+- CTA: „Fordern Sie jetzt Ihre Demo an.“  
+- Alternative CTA: „Oder laden Sie unser Whitepaper zur Optimierung Ihrer Prozesse herunter.“
+
+5. Eingabeparameter:
+- Zielgruppe: {zielgruppe}  
+- Tonalität: {tonalitaet}  
+- Thema: {thema}  
+- Optionaler Kontext (Text, Website-Auszug oder Kombination): {context}
+
+Zusätzliche Informationen (optional):
+- Branchentrends (RSS): {rss_snippets}
+- Google Trends: {trends_insights}
+- Marktdaten (z. B. DESTATIS, Eurostat, Branchenreports): {destatis_stats}
+
+6. Output Format:
+Bitte liefere die Antwort in dieser strukturierten Form:
+
+- Zielgruppenprofil (inkl. Informationsverhalten, Argumentationstyp, Tonpräferenz)
+- Gliederungsvorschlag (mit Abschnittstiteln und kurzer Inhaltsvorschau je Abschnitt)
+- Artikeltext (ca. 300–500 Wörter, klar gegliedert, aktiv und zielgerichtet geschrieben)
+- SEO-Elemente:
+   - Top-3 Keywords (natürlich eingebaut)
+   - Meta-Title (max. 60 Zeichen)
+   - Meta-Description (max. 155 Zeichen)
+- Hook & Nutzenargument (als Einstieg)
+- Call-to-Action (konkreter Vorschlag)
+- Alternative CTA-Variante (gleichwertige, aber anders formulierte Option)
+
+Bitte halte dich exakt an diese Struktur. Keine zusätzlichen Kommentare oder Meta-Erklärungen.
+"""
+
+# ===== Cluster 3: Wettbewerbervergleich =====
+competitive_analysis_prompt_deep = """
+1. Rolle:
+Du bist ein strategischer Wettbewerbsanalyst mit Schwerpunkt auf digitaler Positionierung und Markenwahrnehmung. Du analysierst strukturiert Website-Auftritte, Online-Kommunikation, Sichtbarkeit und UX der analysierten Unternehmen – immer im Verhältnis zur jeweiligen Zielgruppe und Branche. Du formulierst klare, realistische Empfehlungen für Differenzierung und Optimierung.
+
+2. Anweisung:
+Analysiere den Kunden, die angegebenen Wettbewerber sowie zwei weitere von dir selbst recherchierte Unternehmen. Bewerte Website, Kommunikation, Tonalität, Sichtbarkeit und Werbemaßnahmen in einer vergleichenden Tiefe. Beziehe Plattformen wie Google, Branchenverzeichnisse, Maps, Capterra, Jobseiten und Bewertungsportale mit ein. Nutze Tabellen für Übersichtlichkeit, formuliere Empfehlungen präzise und quantifiziert. Bewerte nicht nur die Quantität, sondern auch die Qualität von CTAs, Social Proof und Content-Fokus. Unterscheide bewusst zwischen Quick Wins und strategischen Investitionen – und schätze deren Aufwand und Wirkung.
+
+3. Kontext:
+Der Input besteht aus firmenspezifischen Angaben (Kunde, Branche, Zielgruppe), Kontextauszügen zu Online-Auftritten sowie Informationen zu Anzeigenaktivitäten. Recherchierte Wettbewerber müssen real existieren, der Branche angehören, online aktiv und auffindbar sein – idealerweise im gleichen Markt (DACH oder EU). Ziel ist eine fundierte Entscheidungsgrundlage für bessere digitale Abgrenzung und Performance.
+
+4. Beispiele für Bewertung und Empfehlungen:
+- **CTA-Vergleich (Qualität):** „Kunde mit 1 generischem CTA ('Kontakt aufnehmen'), Wettbewerber 1 mit 3 zielgerichteten Varianten ('Jetzt Demo buchen', 'Produktvideo ansehen', 'Use Case entdecken') – Empfehlung: CTA-Struktur differenzieren.“
+- **Quick Win:** „Header-Navigation des Kunden enthält keinen sichtbaren Nutzen – Wettbewerber betont USP direkt im Hero-Bereich. → Textmodul auf Startseite anpassen.“
+- **Strategischer Vorschlag:** „Einführung einer Case-Study-Sektion mit Filteroptionen, wie bei Wettbewerber 2. Aufwand: mittel, Wirkung: hoch für B2B-Lead-Konversion.“
+
+5. Eingabeparameter:
+- Kunde: {contexts_combined_kunde}
+- Vorgegebene Wettbewerber: {contexts_combined_mitbewerber}
+- Recherchierte Wettbewerber: bitte real und auffindbar ermitteln (Branche: {branche})
+- Zielgruppe: {zielgruppe}
+- Anzeigen: Google: {google_ads}, Facebook: {facebook_ads}, LinkedIn: {linkedin_ads}
+
+6. Output Format:
+
+**Positionierung & Content-Fokus**  
+- Markenbotschaften, Value Proposition, Kommunikationsstil  
+- Tonalitäts-Sensitivität (z. B. Start-up vs. Konzern)  
+- Zielgruppenansprache und Informationsstruktur  
+
+**Vergleichstabelle (Beispielstruktur – dynamisch anpassen)**
+
+| Merkmal                        | Kunde        | Mitbewerber 1 | Mitbewerber 2 | Recherchiert A | Recherchiert B |
+|-------------------------------|--------------|----------------|----------------|----------------|----------------|
+| CTA-Qualität & -Quantität     |              |                |                |                |                |
+| Tonalität & UX                |              |                |                |                |                |
+| Website-Struktur & Navigation |              |                |                |                |                |
+| Sichtbarkeit (Google, Maps)   |              |                |                |                |                |
+| Bewertungsportale (z. B. Trustpilot, Capterra) |     |                |                |                |                |
+| Social Media Präsenz & Aktivität |           |                |                |                |                |
+| Werbeanzeigen (Google, LinkedIn etc.) |      |                |                |                |                |
+
+**Schwächen & Risiken**  
+- Was fehlt, wirkt unscharf, austauschbar oder ist schwer zugänglich?  
+- Wo entsteht ein erkennbarer Wettbewerbsnachteil (z. B. unklarer USP, schwache Markenführung)?
+
+**Chancen zur Differenzierung**  
+- Welche inhaltlichen, visuellen oder strategischen Felder sind bei den anderen unterentwickelt?  
+- Wo könnte der Kunde besser, mutiger oder fokussierter auftreten?
+
+**Quick Wins** (niedriger Aufwand, hoher Wirkungsgrad)  
+- Konkrete Empfehlungen (z. B. „CTA direkt in Header einbauen“, „Hero-Text emotionaler formulieren“)  
+- Einschätzung: Aufwand gering / Wirkung hoch
+
+**Strategische Entwicklungspotenziale** (mittlerer bis hoher Aufwand)  
+- z. B. Content-Hub, Themenbesetzung, Landingpage-Systematik  
+- Einschätzung: Aufwand mittel-hoch / Wirkung langfristig
+
+**Empfohlene Storyline für Präsentation oder Pitch**  
+- Empfohlene Slide-Struktur (z. B. 5–7 Abschnitte): Ausgangslage → Wettbewerbsbild → Gaps → Chancenfelder → Handlungsoptionen
+
+Anforderungen:
+- Recherchiere nur reale, branchenrelevante Unternehmen
+- Vermeide Floskeln, formuliere greifbar und belegt
+- Quantifiziere deine Einschätzungen („3 CTAs“, „wöchentlich 2 Posts“, „Trustpilot 4,3/5“)
+- Nutze Tabellen oder Listen für Vergleich & Empfehlungen
+- Halte dich exakt an die oben definierte Struktur
+"""
+
+# ===== Cluster 4: Kampagnen =====
+
+campaign_plan_prompt_deep = """
+1. Rolle:
+Du bist ein erfahrener Werbestratege mit tiefem Verständnis für Zielgruppen-Psychologie, Funnel-Denken, Conversion-Optimierung und narrativem Storytelling. Du entwickelst kreative, performance-orientierte Kampagnenstrategien, die auf Analytik, Marktverständnis und überzeugender Kommunikation basieren.
+
+2. Anweisung:
+Erstelle eine vollständige Kampagnenstrategie auf Basis der angegebenen Parameter. Segmentiere die Zielgruppe, entwickle eine zentrale Botschaft, plane geeignete Plattformen und Formate entlang des Funnels, formuliere mehrere Varianten von Texten und CTAs, und liefere einen belastbaren Zeitplan. Lege besonderen Wert auf Spannungsaufbau, emotionale Einstiege, klare Nutzenversprechen und präsentationsfähige Argumentationen. Ergänze, wo sinnvoll, externe Daten aus Branchentrends und Marktstatistiken.
+
+3. Kontext:
+Die Kampagne basiert auf folgendem Input:
+
+- Zielgruppe: {zielgruppe}
+- Tonalität: {tonalitaet}
+- Thema: {thema}
+- Kontext (Text/Website-Auszug): {context}
+
+Externe Informationen (optional):
 - Branchentrends (RSS): {rss_snippets}
 - Google Trends: {trends_insights}
 - Marktdaten (DESTATIS/Eurostat): {destatis_stats}
 
-Antwortstruktur:
-- Zielgruppen-Segmente (inklsuive Pain-Points, Bedürfnisse, bevorzugte Kanäle; mit kurzen Begründungen):
-- Tonalität & Markenstil (inkl. Stilbeispiel):
-- Hauptbotschaften (Top 3, je mit Nutzen-Begründung):
-- SEO-Hinweise (Meta, Keywords, Snippet-Chancen, Interne Verlinkungstipps):
-- Neue Content-Ideen (Thema + Format + Nutzen):
-- Struktur- und Format-Tipps (H1-H3, Absätze, CTAs):
-- Lesbarkeitskommentar (kurz & praxisnah):
-- Relevante Trends & News (mit Bezug zur Marke):
-- Vergleich mit Top-3 Google SERP (Welche Aspekte fehlen im Vergleich?):
-- Marktdaten & Chancen:
-- CTA - Wie kann man besser zum Ziel überleiten (inklusive konkreter Call-to-Action-Empfehlungen):
-- Optimierungsvorschläge (Bullet Points, priorisiert):
-"""
+4. Beispiele:
+- Funnel-Zuordnung:  
+  - Awareness: LinkedIn-Video mit narrativem Einstieg („Sie kennen das Problem…“)  
+  - Consideration: Use Case mit Testimonial-Zitat (Karussell-Format)  
+  - Conversion: Demo-CTA auf Landingpage mit Kundenlogo & Proof  
+- Hook: „Ihr Datenschutz kostet zu viel Zeit? Wir geben sie Ihnen zurück.“  
+- CTA-Varianten: „Jetzt Demo sichern“ / „Jetzt Prozesse automatisieren“  
+- Storytelling: Ausgangsproblem → Veränderungsimpuls → Lösung durch Produkt
 
-# ===== Cluster 2: Content Writing =====
-content_write_prompt_fast = """
-Du bist ein erfahrener Texter. Verfasse einen kompakten Artikel (ca. 300-500 Wörter) zu folgendem Thema - abgestimmt auf Zielgruppe und Tonalität.
+5. Output Format:
+Bitte liefere deine Antwort in folgender Gliederung:
 
-Zielgruppe: {zielgruppe}  
-Tonalität: {tonalitaet}  
-Thema: {thema}
+**Zielgruppen-Segmente**  
+- Demografien, Rollen, Informationsverhalten  
+- Trigger, Einwände, bevorzugte Kanäle  
 
-Zusätzliche Infos (optional):
-- Branchentrends: {rss_snippets}
-- Google Trends: {trends_insights}
-- Marktdaten: {destatis_stats}
+**Zentrale Kampagnenbotschaft (USP)**  
+- Emotionaler Nutzen + rationales Argument  
+- Formulierung in max. 2 Sätzen  
 
-Vorgehen:
-- Starte mit einem einprägsamen Einstieg (Hook)
-- Leite direkt zum Nutzen des Produkts/Dienstleistung über
-- Schreibe aktiv, klar, überzeugend
+**Funnel-gerechte Kanal- & Formatplanung**  
+- Pro Phase (Awareness / Consideration / Conversion):  
+  - Kanal (z. B. LinkedIn, Google, Display, E-Mail)  
+  - Format (z. B. Video, Karussell, PDF, Post)  
+  - Aufwand/Wirkung (Low/Mid/High für beides)
 
-Abschnitt:  
-Artikeltext:
-"""
+**Storytelling & Kampagnenidee**  
+- Aufbau: Problem → Impuls → Lösung → Handlungsaufforderung  
+- Narratives Motiv oder Bildsprache, die sich durchzieht  
 
-content_write_prompt_deep = """
-Du bist ein erfahrener Texter. Führe zunächst eine inhaltliche Analyse durch und schreibe anschließend einen klar strukturierten Artikel (300-500 Wörter).
+**Headline-Vorschläge (mind. 3 Varianten)**  
+**CTA-Vorschläge (mind. 2 Varianten, abgestimmt auf Funnel-Stufe)**
 
-Zielgruppe: {zielgruppe}  
-Tonalität: {tonalitaet}  
-Thema: {thema}
+**Zeitplan / Staffelung (Pre-Launch, Launch, Post-Launch)**  
+- Phasen (Wochen/Monate), Frequenz, Rhythmus  
 
-Externe Informationen (optional):
-- Branchentrends: {rss_snippets}
-- Google Trends: {trends_insights}
-- Marktdaten: {destatis_stats}
+**Asset-Vorschläge & Visuals**  
+- Art, Zweck & Funnel-Zuordnung  
+- z. B. Video, Visuals, Testimonials, Whitepaper
 
-Vorgehen:
-1. Zielgruppenanalyse (Bedürfnisse, Erwartungen, Kommunikationsstil)
-2. Grobe Gliederung (Überschriften, Artikelstruktur)
-3. Hook & Nutzenformulierung (emotional oder datenbasiert)
-4. Artikeltext (300-500 Wörter, aktiv, klar)
-5. SEO-Elemente:
-   - Top-3 Keywords (natürlich integriert)
-   - Meta-Title (max. 60 Zeichen)
-   - Meta-Description (max. 155 Zeichen)
-6. Abschluss mit Call-to-Action
+**KPIs & Erfolgskriterien**  
+- pro Funnel-Stufe (z. B. CTR, CPL, Conversion-Rate)  
+- Optional: Benchmarks zur Einordnung  
 
-Antwortstruktur:
-- Zielgruppenprofil:
-- Gliederungsvorschlag (inkl. Überschriften):
-- Artikeltext:
-- SEO-Elemente:
-- Hook & Produkt-Überleitung:
-- Call-to-Action:
-"""
+**A/B-Testplan**  
+- Text vs. Visual  
+- CTA-Typen  
+- Funnel-Phrasierung vs. Produktargumente  
 
-# ===== Cluster 3: Wettbewerbsanalyse =====
-competitive_analysis_prompt_fast = """
-# Aufgabe: Wettbewerbsanalyse für Online-Marketing
+**Pitch-Argumentation (für Freigabe)**  
+- Gliederung für Kampagnen-Präsentation in max. 5 Slides:  
+  1. Problemfeld / Markt  
+  2. Zielgruppe & USP  
+  3. Kreative Leitidee  
+  4. Kanal- & Maßnahmenmix  
+  5. Erfolgsszenario mit KPIs
 
-Ziel: Analyse der Online-Positionierung von {kunde_name} im Vergleich zu den folgenden Wettbewerbern. Auf Basis des Vergleichs sollen klare Chancen zur Abgrenzung und Verbesserung der Online-Präsenz abgeleitet werden.
-
-## Kundendaten
-- Firma: {kunde_name}
-- Branche: {branche}
-- Zielgruppe: {zielgruppe}
-- Kontext / Website-Analyse: {context_kunde}
-
-## Wettbewerberliste (vom Kunden angegeben)
-
-Folgende Wettbewerber sollen berücksichtigt werden:
-{wettbewerber_liste}
-
-## Vergleich
-Erstelle eine strukturierte Vergleichstabelle mit {kunde_name} und allen genannten Wettbewerbern. Nutze diese Spalten:
-
-| Kriterium                         | {kunde_name} | Wettbewerber 1 | Wettbewerber 2 | Wettbewerber 3 | Wettbewerber 4 | Wettbewerber 5 |
-|----------------------------------|--------------|----------------|----------------|----------------|----------------|----------------|
-| Website                          |              |                |                |                |                |                |
-| Positionierung                   |              |                |                |                |                |                |
-| Angebot / Leistungen             |              |                |                |                |                |                |
-| Tonalität / Sprache              |              |                |                |                |                |                |
-| UX/UI Design                     |              |                |                |                |                |                |
-| Sichtbarkeit (Google, Maps etc.)|              |                |                |                |                |                |
-| Branchenportale & Verzeichnisse |              |                |                |                |                |                |
-| Bewertungsplattformen           |              |                |                |                |                |                |
-| Social Media Aktivität          |              |                |                |                |                |                |
-| Online-Anzeigen (z. B. Ads)     |              |                |                |                |                |                |
-| SEO-Grundlagen (Meta/H1 etc.)   |              |                |                |                |                |                |
-
-*(Tabelle dynamisch anpassen je nach Anzahl der Wettbewerber)*
-
-## Handlungsempfehlungen
-1. **Abgrenzung:** Wo und wie kann sich {kunde_name} klar positionieren, um sich von den Mitbewerbern abzuheben?
-2. **Verbesserungspotenziale:** Welche Bereiche der eigenen Online-Präsenz bieten die größten Chancen zur Optimierung?
-3. **Quick Wins & langfristige Maßnahmen:** Liste konkrete Schritte zur Verbesserung auf – kurzfristig wie strategisch.
-
-Achte auf:
-- Branchenrelevanz und Zielgruppennähe
-- Klarheit und Prägnanz
-- konkrete, umsetzbare Empfehlungen
-"""
-
-competitive_analysis_prompt_deep = """
-Du bist ein strategischer Wettbewerbsanalyst für digitale Präsenz. Führe eine vergleichende Tiefenanalyse zwischen dem Kunden, mehreren angegebenen Wettbewerbern sowie zwei recherchierten Unternehmen durch. Gib präzise Einschätzungen mit konkreten Beispielen, tabellarischen Vergleichen und klaren Empfehlungen.
-
-### Aufgaben:
-
-1. Analysiere den Kunden und alle manuell angegebenen Wettbewerber auf Basis der gelieferten Kontexte.
-2. Recherchiere zusätzlich zwei reale Wettbewerber, die:
-   - aus derselben Branche ({branche}) stammen
-   - ähnliche Leistungen und Zielgruppen adressieren
-   - online gut auffindbar sind (z. B. Google, Branchenportale, Maps)
-   - möglichst in vergleichbaren geografischen Märkten (DACH, EU) aktiv sind
-
-### Eingaben:
-- Kunde: {contexts_combined_kunde}
-- Vorgegebene Wettbewerber: {contexts_combined_mitbewerber}
-- Recherchierte Wettbewerber: bitte selbstständig online ermitteln
-- Branche: {branche}
-- Zielgruppe: {zielgruppe}
-- Anzeigen: Google: {google_ads}, Facebook: {facebook_ads}, LinkedIn: {linkedin_ads}
-
-### Analysefelder:
-
-1. **Website & Kommunikation**
-   - Struktur & Menülogik
-   - Value Proposition & Zielgruppenansprache
-   - CTA-Strategie (Anzahl, Platzierung, Klarheit)
-   - Visuelles Branding (Logo, Farben, Bildwelt)
-   - Technische Performance
-
-2. **Externe Sichtbarkeit**
-   - Presse & Branchenverzeichnisse
-   - Social Media Präsenz (Frequenz, Tonalität, Engagement)
-
-3. **Werbung & Kampagnen**
-   - Ausgewertete Anzeigen (Google, FB, LinkedIn)
-
-4. **Zusätzliche relevante Wettbewerber**
-   - Kurzvorstellung der recherchierten Unternehmen (Name, Branche, Website, Besonderheiten)
-
-5. **Strategische Bewertung**
-   - Stärken, Lücken & Abgrenzungschancen
-
-⚠️ Anforderungen:
-- Nutze Tabellen oder Bullet-Listen
-- Vermeide Floskeln & Allgemeinplätze
-- Quantifiziere wo möglich (z. B. „3 CTAs auf Startseite“)
-- Begründe Einschätzungen konkret anhand der Inhalte
-- Arbeite nur mit realen Firmen (keine fiktiven Namen!)
-
-### Antwortstruktur:
-
-📌 **Positionierung & Content-Fokus**  
-...
-
-📊 **Vergleichstabelle (zentrale Unterschiede)**
-
-| Merkmal         | Kunde             | Mitbewerber 1       | Mitbewerber 2       | Recherchiert A       | Recherchiert B       |
-|------------------|--------------------|-----------------------|-----------------------|------------------------|------------------------|
-| CTA              |                    |                       |                       |                        |                        |
-| LinkedIn         |                    |                       |                       |                        |                        |
-| ...              |                    |                       |                       |                        |                        |
-
-🔍 **Schwächen & Risiken**  
-...
-
-✅ **Chancen zur Differenzierung**  
-...
-
-🎯 **Quick Wins vs. strategische Entwicklung**  
-...
-"""
-# ===== Cluster 4: Kampagnen =====
-
-# 4. Kampagnenplan
-campaign_plan_prompt_fast = """
-Du bist ein erfahrener Werbestratege. Erstelle einen kompakten Kampagnenplan (Skizze) auf Basis folgender Eckdaten:
-(Text/Website-Kontext):
-{context}
-Zielgruppe: {zielgruppe}  
-Tonalität: {tonalitaet}  
-Thema: {thema}
-
-Zusätzliche Hinweise:
-- Branchentrends: {rss_snippets}
-
-Ziele:
-- Zielgruppe & USPs identifzieren
-- Plattformen & Formate vorschlagen
-- Kampagnenidee + Zeitplan ableiten
-- Text- und Asset-Ideen formulieren
-
-Antwortstruktur:
-- Zielgruppenansprache (Wording & Trigger):
-- Hauptbotschaft der Kampagne:
-- Werbetexte & Kanäle (mit kurzer Begründung):
-- Grober Zeitplan (Monatsschritte, Phasen):
-- Erfolgskriterien (konkret, messbar):
-- Asset-Vorschläge (Grafiken, Video, Infografik):
-"""
-
-campaign_plan_prompt_deep = """
-Du bist Werbestratege. Entwickle eine umfassende Kampagnenstrategie basierend auf:
-
-Zielgruppe: {zielgruppe}
-Tonalität: {tonalitaet}
-Thema: {thema}
-
-Berücksichtige:
-- Trends: {rss_snippets}
-- Insights: {trends_insights}
-- Markt-Statistiken: {destatis_stats}
-
-Schritte:
-1. Zielgruppen-Segmentierung und -Analyse:
-   - Demografische Merkmale (Alter, Branche, Rolle)
-   - Pain-Points & Bedürfnisse
-
-2. USP- & Botschaftsentwicklung:
-   - Kernbotschaften (emotional/rational)
-   - Priorisierung der Aussagen
-
-3. Plattformen, Formate & Budget:
-   - Kanäle (Search, Social, Display, E-Mail)
-   - Formate (Text, Video, Carousel, Infografik)
-   - Budgetempfehlung (prozentual)
-
-4. Kampagnen-Idee & Kreation:
-   - Kernthema & Storytelling-Ansatz
-   - Textideen für Headlines & Teaser
-   - Vorschläge für Assets
-
-5. Zeitplan & Staffelung:
-   - Pre-Launch, Launch, Post-Launch
-   - Veröffentlichungsfrequenz
-
-6. KPI & Tracking:
-   - Wichtige KPIs (CTR, Conversion-Rate, CPC)
-   - A/B-Test-Vorschläge
-
-Antwortstruktur:
-- Zielgruppen-Segmente:
-- USP / Produktbotschaft:
-- Kanäle, Formate & Budget:
-- Kampagnenidee & Story:
-- Text- & Teaser-Ideen:
-- Asset-Vorschläge:
-- Zeitplan / Staffelung:
-- KPI-Empfehlungen:
-- A/B-Test-Plan:
-- Branchentrends & News:
-- Marktkennzahlen:
-- Call to Action:
+Bitte halte dich exakt an diese Struktur und formuliere präzise, konkret und präsentationsfähig. Keine Meta-Kommentare oder generischen Erklärungen.
 """
 
 # ===== Cluster 5: Landingpage =====
 
-landingpage_strategy_contextual_prompt_fast = """
-Du bist Conversion-Spezialist für digitale Marketing-Kampagnen. Entwickle eine schlanke, wirkungsvolle Strategie für den Aufbau einer Landingpage oder wenn gegeben optimiere die vorhandene.
-
-Ziel: Maximale Relevanz, Klarheit und Conversion-Optimierung
-
-Aktueller Inhalt der Landingpage:
-{context_website}
-
-- Zielgruppe: {zielgruppe}
-- Ziel: {ziel}
-- Kontext (Kampagne, Produkt, Trigger): {thema}
-
-Strukturierte Antwort (kurz & präzise):
-
-- Erste Impression / Headline-Idee:
-- Eine Gliederung der Seite
-- Nutzenversprechen (USP, Value Proposition):
-- Empfohlene Sections (H1-H3 Struktur):
-- Vertrauen & Beweise (z.B. Social Proof, Zertifikate):
-- Call-to-Action (Text & Platzierung):
-- Stil-Tipps (Farben, Bilder, Icons):
-- Asset-Vorschläge (Grafiken, Videos, Infografiken):
-- Mobile-Optimierungshinweise:
-- UX-Tipp zur Scrollführung oder Friction-Punkten:
-"""
-
-
 landingpage_strategy_contextual_prompt_deep = """
-Du bist Conversion-Experte mit Fokus auf High-Performance-Landingpages. Entwickle eine fundierte Strategie für die Aufsetzung oder die Optmimierung einer Landing Page auf Basis folgender Angaben:
+1. Rolle:
+Du bist Conversion-Spezialist mit Schwerpunkt auf Landingpages für Kampagnen, Produktangebote und Funnel-Endpunkte. Du analysierst digitale Inhalte aus Sicht der Conversion-Psychologie, Funnel-Logik, UX/Responsive Design und Performance Copywriting. Du lieferst präzise Handlungsempfehlungen, priorisiert nach Wirkung und Realisierbarkeit.
 
-Landingpage-URL oder Inhalt:
-{context_website}
+2. Anweisung:
+Entwickle eine wirkungsvolle Landingpage-Strategie auf Basis der übergebenen Inhalte. Wenn bereits eine Seite besteht, analysiere sie und optimiere zielgerichtet. Segmentiere die Page klar nach Funnel-Zonen (Top/Mid/Bottom), achte auf einen emotionalen Storytelling-Einstieg, reduziere Reibungspunkte im Formular und optimiere mobile Interaktion sowie Scrollführung. Formuliere nicht nur *was*, sondern auch *warum* – mit Blick auf Wirkung und Zielerreichung.
 
+3. Kontext:
+- Aktuelle Landingpage oder Seiteninhalt: {context_website}
 - Zielgruppe: {zielgruppe}
-- Ziel: {ziel}
-- Kontext (Produkt, Dienstleistung, Kampagnenziel): {thema}
+- Conversion-Ziel: {ziel}
+- Kampagnen-, Produkt- oder Themenkontext: {thema}
 
-Ergänzende Informationen:
+Zusätzliche Informationen (optional):
 - Branchentrends: {rss_snippets}
-- Suchtrends: {trends_insights}
-- Marktkennzahlen: {destatis_stats}
+- Suchtrends (z. B. Google Trends): {trends_insights}
+- Marktdaten / Studien: {destatis_stats}
 
-### Schritte:
+4. Output Format:
 
-1. Zielgruppenanalyse, -ansprache:
-   - Bedürfnisse, Hürden, Conversion-Trigger
-   - Informationsbedarf vs. Entscheidungsmotivation
+- Zielgruppen-Insights  
+  - Entscheider vs. Umsetzer, Informationsverhalten, Vertrauenstrigger
 
-2. Kernbotschaft & Emotionale Ansprache:
-   - Value Proposition (Nutzenversprechen)
-   - Emotionaler vs. rationaler Appeal
-   - Headline-Formulierung (inkl. Hook)
+- Erste Impression & Story-Hook  
+  - Headline mit narrativer Spannung, Problem oder Zielbild  
+  - Subline mit konkretem Nutzen oder Framing
 
-3. Strukturvorschlag:
-   - Empfohlene Sections inklusiver konkreter Textabschnitte (H1-H3, Abschnitte)
-   - Scrolltiefe & visuelle Hierarchie
-   - Trust-Elemente (z.B.:Social Proof, Siegel, Testimonials)
+- Nutzenversprechen / Value Proposition  
+  - Ein Satz, der das Hauptversprechen auf den Punkt bringt (emotional + funktional)
 
-4. Content & Assets:
-   - Copywriting-Tipps für Abschnittstypen
-   - Empfehlungen für Bilder, Icons, Grafiken
+- Strukturvorschlag (Funnel-Zonen: Top / Mid / Bottom)  
+  - Sections mit H1–H3-Vorschlägen, Scrolltiefe & Gewichtung  
+  - Ziel je Section: Aufmerksamkeit / Überzeugung / Handlung
 
-5. CTA & Interaktionen:
-   - Platzierung, Textvorschläge, Conversion-Optimierung
-   - Microinteractions & Reduktion von Friction
+- Vertrauen & Beweise  
+  - Kundenlogos, Use Cases, Social Proof, Siegel – inkl. Platzierung und Nutzenlogik
 
-6. Mobile & UX:
-   - Hinweise zur mobilen Optimierung
-   - UX-Tipps für responsives Verhalten & Geschwindigkeit
+- Call-to-Action (CTA)  
+  - Textvarianten (2–3), abgestimmt auf Conversion-Stufe  
+  - Platzierungsvorschläge mit Funnel-Zuordnung  
+  - Mikrocopy zur Friction-Reduktion („Kein Risiko“, „Sofort kündbar“ etc.)
 
-### Antwortstruktur:
+- Copywriting-Tipps für Key-Abschnitte  
+  - Wording, Sprachstil, semantische Trigger (z. B. Dringlichkeit, Sicherheit, Effizienz)
 
-- Zielgruppen-Insights:
-- Headline + Hook-Idee:
-- Nutzenversprechen / USP:
-- Strukturvorschlag (Abschnitte):
-- Trust-Elemente:
-- Text-Tipps (CTA, Abschnitt 1-3):
-- Asset- und Bildideen:
-- CTA-Vorschläge & Platzierung:
-- Mobile-Optimierung & UX-Hinweise:
-- Konversions-Booster oder A/B-Test-Vorschläge:
+- Stil- und Design-Tipps  
+  - Farben, Bilder, Icons – und deren Wirkung auf Zielgruppe & Conversion  
+  - Empfehlungen für visuelle Konsistenz & UI-Erwartung
+
+- Asset-Vorschläge  
+  - Medienformate je Funnel-Zone (Video, Screenshot, Infografik etc.)  
+  - Ziel: Erklärung, Vertrauen, Vereinfachung
+
+- Mobile-Optimierung  
+  - Scrollbar CTA-Bar, Daumenfreundliche Bedienelemente, Touch-Flächen  
+  - Ladezeiten, Textgrößen, Button-Abstände
+
+- UX-Wirkung & Friction-Tipps  
+  - Identifiziere konkrete Hürden (z. B. Formularkomplexität, zu viele Felder, zu spät platzierter CTA)  
+  - Gib jeweils eine konkrete UX-Empfehlung mit Wirkungserklärung (z. B. „Sticky CTA reduziert Absprungrate auf Mobil um X %“)
+
+- A/B-Test-Vorschläge  
+  - Welche Variante könnte man testen (Text, Visual, CTA, Scrolltiefe)?  
+  - Warum ist sie erfolgskritisch im Kontext des aktuellen Ziels?
+
+Bitte liefere ausschließlich klare, fokussierte und wirksam begründete Vorschläge – keine allgemeinen UX- oder Marketing-Floskeln.
 """
 
 # ===== Cluster 6: SEO Inhalte =====
+seo_audit_prompt_deep = """
+1. Rolle:
+Du bist ein erfahrener SEO-Consultant mit Spezialisierung auf strukturierte Content-Audits, semantische SEO-Architektur und moderne Optimierungsformate für Search Engines und Large Language Models (AIO, GEO, AEO). Du analysierst Inhalt, Struktur, Keywords und Nutzerführung aus strategischer sowie operativer Sicht.
 
-seo_audit_prompt_fast = """
-Du bist SEO-Experte. Führe ein kompaktes SEO-Audit - Analysiere die folgende Seite hinsichtlich ihrer SEO-Stärken und -Schwächen:
+2. Anweisung:
+Führe ein präzises SEO-Audit auf Grundlage der bereitgestellten Inhalte durch. Bewertet werden Meta-Elemente, Keyword-Verwendung, Content-Struktur, UX, Zielgruppenrelevanz, semantische Eignung für AI/LLMs sowie Friction-Punkte. Jeder Vorschlag muss auf den vorliegenden Text bezogen sein und eine klare Wirkungserklärung enthalten. Achte auf Unterschiede je nach Content-Typ: Rechtlicher Content erfordert z. B. andere E-E-A-T-Faktoren als ein Tool-Featuretext.
 
-- Titel der Seite: "{title}"
-- Meta-Description: "{description}"
-- H1 bis H3: {headlines}
-- Text-Inhalt: {text}
-- Zielgruppe: {zielgruppe}
-- Thema: {thema}
+3. Kontext:
+
+- Titel der Seite: "{title}"  
+- Meta-Description: "{description}"  
+- H1 bis H3: {headlines}  
+- Text-Inhalt: {text}  
+- Zielgruppe: {zielgruppe}  
+- Thema: {thema}  
 - Wichtige Keywords: {keywords}
 
-Beantworte:
+4. Output Format:
 
-1. **Meta-Optimierung**: Bewerte Titel & Description. Enthalten sie relevante Keywords? Sind sie zu lang/kurz?
-2. **Keyword-Nutzung**: Welche Keywords werden genutzt, welche fehlen im Text?
-3. **Struktur & UX**: Ist die Überschriftenstruktur (H1-H3) logisch? Fehlen visuelle Elemente oder Call-to-Actions?
-4. **Inhaltsanalyse**: Ist der Content relevant für Zielgruppe und Thema? Gibt es Thin-Content?
-5. **Verbesserungsideen**: Liste 3–5 konkrete, umsetzbare Empfehlungen zur SEO-Verbesserung.
+- SEO-Fokus & Suchintention  
+  - Hauptintention (informational / transactional / navigational)  
+  - Passende Funnel-Stufe (TOFU / MOFU / BOFU)
 
-Antworte als strukturierte Analyse. Nur für diese Seite, keine allgemeinen Tipps.
+- Meta-Optimierung  
+  - Title & Description: Keyword-Präzision, Differenzierung, Länge  
+  - Verbesserungspotenzial: SERP-Clickrate, Zielgruppenansprache
+
+- Keyword-Analyse  
+  - Verwendete Haupt- und Neben-Keywords (Cluster)  
+  - Fehlende Begriffe, semantische Gaps  
+  - Keyword-Dichte und Positionierung
+
+- Content-Qualität & Struktur  
+  - Inhaltliche Relevanz für Zielgruppe  
+  - Tiefe, Redundanzen, Nutzenklarheit  
+  - Abschnittslogik & Scannability (Überschriftenstruktur)  
+  - E-E-A-T-Bewertung je nach Inhaltstyp (z. B. Expertise, Quellen, Aktualität)
+
+- UX & Absprungrisiko  
+  - Gibt es kritische Reibungspunkte? (z. B. zu lange Einleitung, kein CTA, zu technisch)  
+  - Was könnte Nutzer stoppen? Wo fehlt Orientierung oder Handlung?
+
+- AI-Readiness: AIO / GEO / AEO  
+  - AIO (Large Language Models): Sind Texte klar, gliederbar, thematisch trennscharf?  
+  - GEO (Generative Engines): Gibt es Fragmente (z. B. Bullet Lists, Fragen), die nutzbar sind?  
+  - AEO (Answer Engine): Gibt es kurze, direkte Antworten oder FAQs?
+
+- Verbesserungsvorschläge  
+  - 3–5 priorisierte Maßnahmen, jeweils mit Begründung  
+  - Wirkung (z. B. „Meta-Titel enthält kein Differenzierungsmerkmal → niedrige CTR“)  
+  - Zeitrahmen (Quick Win / mittelfristig / strukturell)
+
+Bitte beziehe dich ausschließlich auf die bereitgestellten Inhalte. Vermeide generische Tipps. Antworte als strukturierte, präzise Analyse.
 """
 
-seo_audit_prompt_deep = """
-Du bist ein erfahrener SEO-Consultant. Tiefenanalyse: Führe ein umfassendes SEO-Audit für die folgende Website bzw. Seite durch und erkläre deine Kriterien. Berücksichtige aktuelle Anforderungen an AI-, GEO- und AEO-Optimierung. 
-
-Die Inhalte stammen aus mehreren Seiten der Domain (Startseite + wichtige Unterseiten):
-{contexts_combined}
-
-Struktur der Analyse:
-
-1. Meta & Snippet-Optimierung:
-   - Title & Meta-Description: Relevanz, Länge, CTR-Potenzial
-   - Strukturierte Daten (falls sichtbar)
-   - SERP-Optimierung (z. B. für Featured Snippets)
-
-2. Keyword-Analyse:
-   - Hauptthema & Suchintention erkennen
-   - Keyword-Cluster & semantische Erweiterungen
-
-3. Content-Qualität:
-   - E-E-A-T-Anmutung (Vertrauen, Autorität)
-   - Duplicate, Thin Content oder Keyword Stuffing
-   - Lesbarkeit & Mehrwert
-
-4. Technische Struktur (Oberfläche):
-   - H-Struktur (H1-H3)
-   - Interne Verlinkung (sichtbar)
-   - Ladezeit-Indikatoren (falls einschätzbar)
-
-5. User Experience:
-   - Aufbau, Scannability, Call-to-Actions
-   - Mobilfreundlichkeit & visuelle Klarheit
-
-6. Markt & Trends:
-   - Relevante Themenlücken
-   - Trendthemen integrierbar?
-
-7. Nutzerzentrierung & LLM-Fokus:
-   - AIO: Verständlichkeit & Gliederung für LLMs
-   - GEO: Struktur & semantische Klarheit für Generative Engines
-   - AEO: Eignung für Snippets, FAQ, direkte Antworten
-
-8. Lokale SEO-Optimierung:
-
-Antwortstruktur:
-- SEO-Fokus & Hauptthema:
-- Meta-Elemente:
-- Keyword-Chancen:
-- Content-Stärken & Schwächen:
-- Struktur- und Formatkritik:
-- UX & Lesefluss:
-- Marktbezug & Trendchancen:
-- Lokales SEO
-- Nutzerfokus (AIO, GEO, AEO):
-- Priorisierte Optimierungsvorschläge:
-
-Antworte als strukturierte Analyse. Nur für diese Seite, keine allgemeinen Tipps.
-"""
-
-# 7. SEO-Optimierung
-seo_optimization_prompt_fast = """
-Du bist ein erfahrener SEO-Texter. Optimiere den folgenden Text für bessere Sichtbarkeit in Suchmaschinen - ohne die Lesbarkeit für Menschen zu beeinträchtigen. Gib auf Basis des folgenden SEO-Kontexts schnelle, konkrete Optimierungsvorschläge für eine bestimmte Seite **und allgemeine Tipps für andere Unterseiten**.
-
-
-Zielseite:
-{contexts_combined}
-
-SEO-Audit-Zusammenfassung:
-{seo_audit_summary}
-
-Lighthouse-Report: 
-{lighthouse_json}
-
-Ziel:
-- Keyword-Relevanz verbessern (natürlich eingebunden)
-- Meta-Elemente (Title & Description) generieren
-- Struktur und Lesbarkeit erhöhen (Überschriften, Absätze)
-- E-E-A-T-Anmutung stärken (Vertrauen, Fachlichkeit)
-
-Antwortstruktur:
-=== ZIELSEITE ===
-- Keywords:
-- Überarbeiteter Text:
-- Struktur & H-Tags:
-- Meta-Daten:
-- CTAs:
-- Technisches SEO:
-- Verbesserungshinweise (stichpunktartig):
-
-=== ANDERE UNTERSEITEN (generelle Tipps) ===
-- Interne Verlinkung:
-- Allgemeine Content-Tipps:
-- Lokale Hinweise:
-- Verbesserungshinweise (stichpunktartig):
-"""
+# ===== Cluster 7: SEO-Optimierung =====
 
 seo_optimization_prompt_deep = """
-Du bist ein erfahrener SEO-Optimierer mit redaktioneller Erfahrung. Überarbeite den folgenden Text umfassend - mit dem Ziel, Sichtbarkeit und Relevanz in Suchmaschinen zu maximieren, ohne die Lesbarkeit für Menschen zu verlieren auf Basis der folgenden Eckdaten: 
+1. Rolle:
+Du bist ein erfahrener SEO-Texter mit Fokus auf strategischer Inhaltsoptimierung, Funnel-getriebener Nutzerführung und messbarer Verbesserung der organischen Sichtbarkeit. Du formulierst Texte, die sowohl für Menschen als auch für Suchmaschinen und LLMs verständlich, attraktiv und technisch sauber lesbar sind.
 
-Einleitende Mini-Analyse ist erlaubt (z.B. Keywords & Struktur prüfen), aber keine Vollanalyse wie im SEO-Audit.
+2. Anweisung:
+Optimiere den Text auf der angegebenen Seite ganzheitlich: Fokus auf Keyword-Abdeckung, bessere Gliederung mit H-Tags, klarere CTAs, sichtbare Meta-Elemente und Nutzerführung mit Scroll-Logik. Berücksichtige relevante Hinweise aus SEO-Audit, Lighthouse-Report, Markttrends und Content-Kontext. Der optimierte Text muss direkt einsatzfähig, gegliedert und realistisch platzierbar sein – z. B. in einem CMS.
 
-Kontext:
-- SEO-Audit-Zusammenfassung: {seo_audit_summary}
-- Lighthouse-Report: {lighthouse_json}
-- Inhalte mehrerer Seiten: {contexts_combined}
-- Zielseite im Fokus: {focus_url}
-- Branchentrends: {rss_snippets}
-- Trend-Insights: {trends_insights}
-- Markt-Daten: {destatis_stats}
+3. Kontext:
+- Zielseite (Rohtext oder HTML): {contexts_combined}  
+- SEO-Audit-Zusammenfassung: {seo_audit_summary}  
+- Lighthouse-Report: {lighthouse_json}  
+- Branchentrends: {rss_snippets}  
+- Suchtrends: {trends_insights}  
+- Markt- / Branchen-Daten: {destatis_stats}
 
-### Vorgehen:
-1. Thema & Suchintention erfassen
-2. Text auf Keyword-Abdeckung & Synonyme prüfen
-3. Meta-Elemente (Title + Description) optimieren
-4. Struktur (Abschnitte, H-Tags) verbessern
-5. Stil & Lesbarkeit optimieren (Absätze, klare Sprache)
-6. Content-Stärke: Vertrauen, Fachwissen, Relevanz (E-E-A-T)
-7. Optionale Trendintegration
+4. Output Format:
 
-Kategorien:
-1. Keywords & Suchintention
-2. Textqualität & Stil
-3. Struktur & H-Tags
-4. Meta-Daten & Snippets
-5. CTA & Conversion
-6. Technische SEO (Lighthouse)
-7. Interne Verlinkung
-8. Unterseiten-Strategie
-9. Lokales SEO
-10. Strategische Roadmap
-11. Trend-Relevanz & Marktpotenzial (Trends, RSS, DESTATIS)
-
-Antwortstruktur:
 === ZIELSEITE: {focus_url} ===
-- Keywords & Suchintention:
-  - Prio 1: [...], Begründung: [...]
-  - Prio 2: [...], Begründung: [...]
-- Neuer SEO-optimierter Text:
-- Meta Informationen: 
-- E-E-A-T-Stärkung:
-- Andere Verbesserungsvorschläge:
 
-=== GENERELLE TIPPS FÜR ANDERE SEITEN ===
-- Interne Verlinkung:
-- Allgemeine Content-Tipps:
-- Lokale Hinweise:
-- Verbesserungshinweise (stichpunktartig):
+- Keyword-Fokus & Funnel-Intention  
+  - Prio 1 Keywords (mit Wirkung & Funnel-Zuordnung)  
+  - Prio 2 Keywords (semantische Ergänzungen oder Longtails)
+
+- Überarbeiteter Text (bitte strukturiert mit H2/H3-Abschnitten ausgeben)  
+  - Logisch gegliedert  
+  - Sichtbare Scrollführung (Problem → Lösung → Vertrauen → CTA)  
+  - Keyword natürlich eingebaut  
+  - Zwischenüberschriften sprechend & hierarchisch
+
+- Struktur & H-Tags  
+  - Übersicht der neuen Struktur (H1, H2, H3)  
+  - Abschnitte pro Phase: Orientierung, Information, Conversion
+
+- Meta-Daten  
+  - SEO-optimierter Title (max. 60 Zeichen)  
+  - Meta-Description (max. 155 Zeichen, mit Nutzen & Klickanreiz)
+
+- CTA-Vorschläge  
+  - Textvarianten (aktiv, handlungsorientiert)  
+  - Platzierungsempfehlung inkl. Scroll-Hinweis (z. B. „direkt nach der Problemdefinition“)
+
+- Technisches SEO (basierend auf Lighthouse + Textstruktur)  
+  - Erste Inhalte sichtbar? (First Contentful Paint)  
+  - Scrolltiefe vs. Content-Länge sinnvoll?  
+  - Semantische HTML-Logik erfüllt?
+
+- Verbesserungshinweise (stichpunktartig)  
+  - 3–5 umsetzbare Optimierungen mit Wirkungserklärung  
+  - z. B. „Hero-Text zu lang – verzögert Scrollstart“, „kein CTA im oberen Drittel“
+
+=== ANDERE UNTERSEITEN (generelle Tipps) ===
+
+- Interne Verlinkung  
+  - Sinnvolle Anker-Logik (z. B. thematische Clusterbildung)  
+  - Handlungsorientierte Linktexte (nicht „hier klicken“)
+
+- Allgemeine Content-Tipps  
+  - Mögliche Erweiterungen: z. B. FAQ-Blöcke, Vergleichstabellen, Problem-/Lösungs-Formate  
+  - Wiederkehrende Schwächen: zu breite Themenführung, fehlender Mehrwert
+
+- Lokale Hinweise  
+  - Adresse, Standort-Keywords, Google Maps, Local Schema  
+  - Verwendung ortsbezogener CTAs oder Inhalte („Jetzt in [Ort] starten“)
+
+- Weitere Verbesserungshinweise (stichpunktartig)  
+  - Was auf mehreren Seiten auffällt (z. B. kein einheitliches CTA-Design, zu generische Titles)
+ 
+Hinweis: Keine pauschalen SEO-Regeln. Alle Empfehlungen müssen konkret aus dem gelieferten Inhalt ableitbar sein und mit realistischem Nutzen für SEO, Nutzerführung oder Snippet-Wirkung versehen werden.
 """
 
 # ===== Cluster 8: Technisches SEO =====
-seo_lighthouse_prompt_fast = """
-Du bist SEO-Analyst. Interpretiere die mit oder ohne der folgenden Lighthouse-Daten und gib eine kurze Bewertung zur SEO-Qualität der analysierten Seite ab.
-
-Kontext:
-{context}
-
-Lighthouse-Daten (SEO-Sektion):  
-{lighthouse_data}
-
-Beantworte:
-- SEO-Score: (Numerischer Wert + Kurzbewertung)
-- Stärken der Seite (3 Bullet Points):
-- Ladezeit, Struktur, Mobile-Freundlichkeit:
-- Schwächen & Empfehlungen (max. 5 Bullet Points):
-- Technische Hinweise (falls relevant, z.B. Meta, Hreflang, Indexierung):
-- Lokales SEO-Check:
-- SEO-LLM-Kriterien (AEO, GEO, AIO):
-- Nächste Schritte (konkret & priorisiert):
-"""
 
 seo_lighthouse_prompt_deep = """
-Du bist ein technischer SEO-Analyst. 🧠 Tiefenanalyse: Verarbeite mehrere Lighthouse-Reports systematisch. Gib pro Seite eine Bewertung und dann eine Zusammenfassung mit globalen Empfehlungen. Nutze klare Kategorien, Prioritäten, Aufwand & Wirkung.
+1. Rolle:
+Du bist ein erfahrener technischer SEO-Analyst mit Fokus auf der strukturierten Auswertung von Lighthouse-Daten. Du bewertest Seiten systematisch, erkennst technische, strukturelle und semantische Schwächen, und formulierst klare, priorisierte Handlungsempfehlungen. Du denkst sowohl für klassische Crawler als auch für KI-gestützte Suchsysteme (AEO, GEO, AIO).
 
-Input:
-- {lighthouse_reports_combined}
+2. Anweisung:
+Analysiere Lighthouse-Reports im SEO-Kontext und interpretiere die SEO-relevanten Ergebnisse (manuell oder automatisiert). Gib pro Seite eine Bewertung ab und identifiziere konkrete technische sowie inhaltlich-strukturelle Optimierungspotenziale – mit Fokus auf Umsetzbarkeit, Wirkung und Funnel-Relevanz. Differenziere deine Hinweise in SEO-Score, Meta-Qualität, mobile UX, strukturierte Daten, Pagespeed-Textzusammenhang und KI-Suchfähigkeit (AEO, GEO, AIO).
 
-Kontext:
-{context}
-Ziel:
-- Technische und strukturelle SEO-Schwächen aufdecken
-- Suchmaschinen-Sichtbarkeit verbessern
-- Umsetzbare Empfehlungen liefern (OnPage/OffPage)
+3. Input:
 
-Analysebereiche:
-1. SEO-Score & allgemeine Bewertung
-2. Meta-Tags & strukturierte Daten
-3. Indexierung & Crawling-Hinweise
-4. Linkstruktur, Canonical, hreflang
-5. Mobile-Freundlichkeit & Performance-Faktoren
-6. Lokales SEO (NAP, Standortdaten, GMaps, Schema.localBusiness)
-7. SEO für LLMs: AEO (Answer), GEO (Entities), AIO (Intent)
-7. Empfehlungen mit Priorisierung
+- Lighthouse-Daten: {lighthouse_reports_combined}  
+- Kontext: {context}
 
-Antwortstruktur:
-=== TECHNISCHE BEWERTUNG PRO SEITE ===
-- /seite1:
-  - SEO-Score & Gesamturteil:
-  - Positive SEO-Signale:
-  - Kritische Schwächen (mit Ursachen):
-  - Priorisierte Optimierungsschritte:
+4. Ziel:
 
-=== GESAMTBEWERTUNG & FAZIT ===
-- Wichtigste Probleme (aggregiert):
-- Empfehlungen nach Kategorie mit:
-  - Prio (1-3)
-  - Aufwand (niedrig/mittel/hoch)
-  - Wirkung (hoch/mittel/gering)
-- Lokale Optimierungsmöglichkeiten:
-- SEO-Lens für KI-Suchergebnisse (AEO, GEO, AIO):
+- SEO-Potenziale und technische Defizite aufdecken  
+- Sichtbarkeit verbessern – sowohl in Google als auch in KI-basierten Antwortsystemen  
+- Maßnahmen mit klarer Priorisierung, Aufwand und Wirkung vorschlagen  
+
+5. Analysebereiche:
+
+1. SEO-Score & Meta-Struktur  
+2. Performance (FCP, LCP, CLS, TTI) mit konkretem Bezug zu Content-Struktur  
+3. Mobile-Freundlichkeit & visuelle Klarheit  
+4. Indexierbarkeit & strukturierte Daten  
+5. AEO / GEO / AIO-Bewertung: Fragbarkeit, Entitätsklarheit, Modularisierung  
+6. Lokale SEO-Potenziale  
+7. Empfehlungskatalog: Prio × Aufwand × Wirkung
+
+6. Output Format:
+
+=== SEITENANALYSE ===
+
+- SEO-Score: XX (z. B. „76/100 – solide, aber Optimierung bei strukturierten Daten nötig“)
+
+- Stärken (max. 3 Bullet Points)  
+  - z. B. „Klare H1 vorhanden“, „Mobile UX stabil“, „Validiertes JSON-LD integriert“
+
+- Schwächen & Empfehlungen (max. 5 Bullet Points, mit Wirkung & Quick Wins markiert)  
+  - z. B. „FCP 3.1s – Hero-Bereich zu bildlastig → Textanteil erhöhen → Wirkung: hoch / Aufwand: mittel“
+
+- Technische Hinweise  
+  - z. B. „hreflang fehlt für Sprachversion“, „noindex auf /jobs/seite aktiv“
+
+- Struktur & Content-Bezug  
+  - Gibt es zu lange Einstiegsblöcke? → Scrollverhalten behindert?  
+  - Ist die Textstruktur für Snippet-Nutzung geeignet?
+
+- Lokale SEO  
+  - Schema.org.localBusiness integriert?  
+  - Standortdaten, NAP-Konsistenz, Google Maps-Referenzen?
+
+- KI-Suchsystem-Tauglichkeit (AEO / GEO / AIO):  
+  - AEO (Answer Optimization): Gibt es direkt extrahierbare Antwortformate (Listen, Tabellen, FAQs)?  
+  - GEO (Entity Clarity): Sind zentrale Themen, Marken, Orte klar strukturiert & maschinenlesbar?  
+  - AIO (Intent Optimization): Ist der Text redundantfrei, gegliedert, argumentativ geschlossen?
+
+- Nächste Schritte (priorisiert)  
+  - Maßnahme 1: … → Prio: hoch / Aufwand: niedrig / Wirkung: hoch  
+  - Maßnahme 2: …  
+  - Ziel: Handlungspfad für Dev-, Content- oder SEO-Team
+
+=== GESAMTBEWERTUNG (optional, falls mehrere Seiten analysiert wurden) ===
+
+- Wiederkehrende Probleme (z. B. keine strukturierte Daten site-weit, langsamer FCP auf allen Produktseiten)  
+- Clustervorschlag: Welche Seitentypen haben ähnliche Probleme?  
+- Empfehlungen nach Kategorie (Technik / Struktur / Content / LLM-Sichtbarkeit)
+
+Hinweis: Alle Empfehlungen müssen auf den gelieferten Lighthouse-Daten beruhen. Keine pauschalen SEO-Tipps.
 """
 
-# ===== Cluster 9: Reports & Maßnahmen =====
+# ===== Cluster 9: Taktische Maßnahmen =====
 
-monthly_report_prompt_fast = """
-Du bist Marketing-Analyst. Erstelle einen kompakten Monatsreport auf Basis der folgenden Daten.
-
-Zeitraum: {monat}  
-Inhalte & Kampagnen (Textauszug): {context}
-
-Antwortstruktur:
-- Zusammenfassung:
-- Was hat funktioniert? (3 Bullet Points):
-- Was war schwach oder überflüssig?
-- Empfehlungen für Optimierung:
-- Neue Content- oder Kampagnenideen:
-- Trends oder externe Impulse, die relevant sind:
-- Lokaler Kontext (optional):
-- Bonus: KI-Einsatz / Automatisierungsideen:
-"""
-
-monthly_report_prompt_deep = """
-Du bist Marketing-Stratege. Erstelle eine tiefgehende Monatsauswertung zur Content- und Kampagnenperformance.
-
-Zeitraum: {monat}  
-Inhalte, Maßnahmen & Kampagnen (Textauszug oder Zusammenfassung):  
-{context}
-
-Zusätzliche Datenquellen:
-- Branchentrends: {rss_snippets}
-- Google Trends: {trends_insights}
-- Marktkennzahlen: {destatis_stats}
-
-Ziele:
-- Erfolge & Schwächen identifizieren
-- Strategie und Inhalte bewerten
-- Learnings & Empfehlungen für den nächsten Monat ableiten
-
-Struktur der Antwort:
-1. Ziel- und Maßnahmenabgleich:
-   - Was war geplant vs. umgesetzt?
-   - Welche KPIs wurden erreicht?
-
-2. Performance-Analyse:
-   - Was hat gut funktioniert? (Erfolge, Hebel, Formate)
-   - Was war unterdurchschnittlich oder überflüssig?
-
-3. Strategie-Empfehlungen:
-   - Welche Themen/Formate sollten fortgeführt werden?
-   - Wo liegen ungenutzte Potenziale?
-
-4. Trends & Markt-Reflexion:
-   - Externe Einflüsse oder Themenverschiebungen
-   - Passende Trends fürs nächste Monatsbriefing
-
-Antwortstruktur:
-- Erfolge & Highlights:
-- Schwächen & Bottlenecks:
-- Empfehlungen (präzise & umsetzbar):
-- Neue Ideen & Testansätze:
-- Trendrelevanz & Marktanpassungen:
-- Lokaler Kontext:
-- Bonus: KI-Einsatz / Automatisierungsideen:
-"""
-
-# 10. Taktische Maßnahmen
-tactical_actions_prompt_fast = """
-Du bist Performance-Marketer. Leite konkrete, sofort umsetzbare Taktiken aus dem folgenden Input ab.
-
-Kontext (z.B. Analyse, Strategie, Audit):  
-{context}
-
-Ziel:
-- Klar priorisierte Maßnahmen für Marketing, Content oder SEO
-- Schnelle Umsetzung möglich (Quick Wins)
-
-Antwortstruktur:
-- Quick Wins (3-5 Maßnahmen, sofort umsetzbar):
-- Mittelfristige Taktiken (nach Aufwand oder Hebel priorisiert):
-- Kommentar: (optional, Kontext oder Hinweis zur Umsetzung)
-- Lokale Maßnahmen:
-- Offline-Materialien:
-- KI-Integration & Automatisierung:
-"""
 
 tactical_actions_prompt_deep = """
-Du bist erfahrener Performance-Stratege. Leite aus dem folgenden Input konkrete, priorisierte Taktiken ab, die direkt in Maßnahmen überführt werden können (ein realistischer, priorisierter Maßnahmenplan).
+1. Rolle:
+Du bist ein Performance-Stratege mit tiefem Verständnis für Content, SEO, Kampagnen, Marktmechaniken und Automatisierung. Du leitest umsetzbare Maßnahmen ab, die klar priorisiert sind, auf konkreten Insights beruhen und echten Business-Impact erzeugen. Du denkst kanalübergreifend und integrierst Daten aus SEO, Wettbewerb, Kampagne und technischer Analyse zu einem konsistenten Taktikplan.
 
-Eingaben:
-- SEO-Audit-Zusammenfassung: {seo_summary}
-- Lighthouse-Report: {lighthouse_json}
-- Wettbewerbsanalyse: {competitor_summary}
-- Kampagnenplan: {campaign_plan}
-- Branchentrends: {rss_snippets}
-- Trend-Insights: {trends_insights}
-- Markt-Daten: {destatis_stats}
-- {context}
+2. Anweisung:
+Analysiere die übergebenen Inputs und entwickle konkrete, priorisierte Taktiken. Jede Maßnahme muss sich aus einem erkennbaren Insight ergeben (z. B. aus einem SEO-Audit oder einer Wettbewerbsanalyse), eine klare Umsetzungsempfehlung enthalten und eine Wirkung (Impact auf Sichtbarkeit, Conversion, Awareness etc.) benennen. Kampagnen- und Wettbewerbsdaten sind nicht isoliert zu betrachten – Empfehlungen müssen kanalübergreifend und synergetisch abgeleitet werden. SWOT wird dabei als struktureller Anker verwendet, jedoch nur mit Fokus auf strategisch relevante Auswirkungen.
 
-Ziel:
-- Maßgeschneiderte Handlungsempfehlungen für Content, SEO, Kampagnen
-- Klar priorisiert nach Hebel, Relevanz und Aufwand
-- Umsetzbar für Marketing- oder Redaktionsteams
-- Fokussierung auf Lokalität und strategische Nachhaltigkeit
+3. Eingaben:
 
-Antwortstruktur:
-- Kontextzusammenfassung (1-2 Sätze):
+- SEO-Audit-Zusammenfassung: {seo_summary}  
+- Lighthouse-Report: {lighthouse_json}  
+- Wettbewerbsanalyse: {competitor_summary}  
+- Kampagnenplan: {campaign_plan}  
+- Branchentrends: {rss_snippets}  
+- Trend-Insights: {trends_insights}  
+- Markt-Daten: {destatis_stats}  
+- Sonstiger Kontext: {context}
 
-Sofort-Maßnahmen (0-4 Wochen):
-- Maßnahme: [...], Priorität: [...], Aufwand: [...], Wirkung: [...]
+4. Ziel:
+- Klar strukturierter, realistischer Maßnahmenplan  
+- Funnel-orientiert und differenziert nach Zeithorizont  
+- Handlungspfad für Marketing-, Content-, SEO- und Dev-Teams  
+- Lokale, technische & KI-basierte Maßnahmen berücksichtigt  
 
-Mittelfristige Aktionen (1-3 Monate):
-- Maßnahme: [...], Priorität: [...], Aufwand: [...], Wirkung: [...]
+5. Output-Format:
 
-Langfristige Maßnahmen (ab 3 Monaten):
-- Maßnahme: [...], Priorität: [...], Aufwand: [...], Wirkung: [...]
+**Kurze Kontextzusammenfassung (1–2 Sätze):**  
+(z. B. „Wettbewerber dominieren Google Ads in Segment X, während eigene Mid-Funnel-Seiten technische SEO-Mängel aufweisen. Kampagne zielt auf Awareness in B2B-Marktsegment Y.“)
 
-Lokale Maßnahmen:
-- Maßnahme: [...], Ziel: [...], Geo-Bezug: [...], Priorität: [...]
+---
 
-Offline-Materialien:
-- Maßnahme: [...], Integration mit Online-Kampagnen: [...]
+**Quick Wins (0–4 Wochen)**  
+*3–5 direkt umsetzbare Taktiken mit hohem Impact*
 
-KI-Integration & Automatisierung:
-- Maßnahme: [...], Tool/Plattform: [...], Wirkung: [...]
+- Maßnahme: […],  
+  Insight: […],  
+  Umsetzung: […],  
+  Wirkung: […],  
+  Aufwand: [niedrig/mittel],  
+  Priorität: [hoch/mittel]
 
-SWOT-Analyse:
-- Stärken:
-- Schwächen:
-- Chancen:
-- Risiken:
+---
+
+**Mittelfristige Taktiken (1–3 Monate)**  
+*Strategische Aktionen mit struktureller Wirkung oder kanalübergreifender Verbindung*
+
+- Maßnahme: […],  
+  Insight: […],  
+  Verbindung zu SEO/Kampagne/Wettbewerb: […],  
+  Umsetzung: […],  
+  Wirkung: […],  
+  Aufwand: […],  
+  Priorität: […]
+
+---
+
+**Langfristige Maßnahmen (ab 3 Monaten)**  
+*Wachstums- oder Automatisierungsschritte mit nachhaltigem Effekt*
+
+- Maßnahme: […],  
+  Ziel: […],  
+  Insight (Trend / Markt / SEO): […],  
+  Umsetzung: […],  
+  Wirkung: […],  
+  Aufwand: […],  
+  Priorität: […]
+
+---
+
+**Lokale Maßnahmen**  
+- Maßnahme: […],  
+  Geo-Bezug: […],  
+  Insight (z. B. Map Visibility / Standortdaten): […],  
+  Wirkung: […],  
+  Priorität: […]
+
+---
+
+**Offline-Materialien**  
+- Maßnahme: […],  
+  Verbindung zu Kampagne / Lead Funnel: […],  
+  Wirkung: […],  
+  Integration mit Online-Aktivitäten: […]
+
+---
+
+**KI-Integration & Automatisierung**  
+- Maßnahme: […],  
+  Insight (z. B. Wiederholbare Textmuster, FAQ-Datenbank): […],  
+  Tool / Plattform: […],  
+  Wirkung: […],  
+  Aufwand: […],  
+  Priorität: […]
+
+---
+
+**SWOT-Analyse (taktisch eingebunden)**  
+- Stärke → taktisch genutzt durch: [… Maßnahme …]  
+- Schwäche → ausbalanciert durch: [… Maßnahme …]  
+- Chance → aktiviert über: [… Maßnahme …]  
+- Risiko → abgesichert über: [… Maßnahme …]
+
+Hinweis: Keine generischen Empfehlungen. Jede Maßnahme muss spezifisch aus den gelieferten Inputs ableitbar sein und entlang des Musters *Insight → Umsetzung → Wirkung* beschrieben werden.
 """
 
-alt_tag_writer_prompt_fast = """
-Du bist ein SEO-Experte für Bildbeschreibungen. Analysiere die Bilder auf der folgenden Unternehmensseite und schlage zu jedem Bild zwei optimierte Alt-Texte vor.
-
-Ziel: Die Alt-Texte sollen:
-- relevante Keywords enthalten
-- für die Zielgruppe ansprechend sein
-- die Branche berücksichtigen
-- beschreiben, was auf dem Bild wirklich zu sehen ist
-- nicht generisch oder austauschbar sein
-
-## Unternehmensinformationen:
-- Branche: {branche}
-- Zielgruppe: {zielgruppe}
-- Thema/Textkontext: {text}
-- URL: {url}
-
-## Gefundene Bilder & Kontexte:
-{image_context}
-
-Gib pro Bild exakt 2 alternative Alt-Tags (knapp, keyword-orientiert) im Format:
-
-Bild 1:
-- Variante A: ...
-- Variante B: ...
-"""
+# ===== Cluster 10: Alt-Tag =====
 
 alt_tag_writer_prompt_deep = """
-Du bist ein fortgeschrittener SEO-Experte, spezialisiert auf visuelle Zugänglichkeit, für Bildbeschreibungen und Suchmaschinenoptimierung. Analysiere alle Bilder auf folgender Webseite ({url}) und erstelle pro Bild zwei Alt-Text-Vorschläge.
+1. Rolle:
+Du bist ein spezialisierter SEO- und Accessibility-Experte mit Fokus auf visuelle Optimierung. Du entwickelst hochwertige Alt-Texte, die gleichermaßen den Anforderungen von Suchmaschinen, Screenreadern und Zielgruppenkommunikation gerecht werden.
 
-Ziel: Die Alt-Texte sollen:
-- relevante Keywords enthalten
-- für die Zielgruppe ansprechend sein
-- die Branche berücksichtigen
-- beschreiben, was auf dem Bild wirklich zu sehen ist
-- nicht generisch oder austauschbar sein
+2. Ziel:
+Erstelle für jedes gefundene Bild auf der angegebenen Website zwei unterscheidbare Alt-Text-Varianten mit folgenden Eigenschaften:
 
-## Unternehmensinformationen:
-- Branche: {branche}
-- Zielgruppe: {zielgruppe}
-- Thema/Textkontext: {text}
-- URL: {url}
+- **Zugänglich:** Der Alt-Text beschreibt klar, was auf dem Bild sichtbar ist (ohne Interpretation) – für Menschen mit Sehbeeinträchtigung.
+- **SEO-orientiert:** Er enthält relevante Keywords aus Thema, Branche und Inhalt (wenn sinnvoll).
+- **Zielgruppenadäquat:** Ton, Begriffswahl und Betonung passen zur Zielgruppe (z. B. Fachpublikum vs. Laien).
+- **Kein Platzhalter:** Vermeide generische Formulierungen wie „Mitarbeiterfoto“ oder „Symbolbild“.
+- **Stilvarianten:** Variante A ist sachlich-deskriptiv, Variante B ist aktivierend oder emotional/konversionorientiert (z. B. für Awareness oder Produkt-CTA).
 
-## Gefundene Bilder & Kontexte:
-{image_context}
+3. Kontextdaten:
+- Branche: {branche}  
+- Zielgruppe: {zielgruppe}  
+- Thema/Textkontext: {text}  
+- URL: {url}  
+- Gefundene Bilder & Textumfeld: {image_context}  
 
-## Format:
-Bild 1:
-- Variante A: ...
-- Variante B: ...
+4. Anforderungen an deine Alt-Text-Vorschläge:
+- Nutze bei Bedarf Branchenbegriffe oder relevante Keywords aus dem Text.
+- Beziehe dich ausschließlich auf das Sichtbare (keine Meta- oder impliziten Bedeutungen).
+- Variante B kann auch auf Conversion oder Awareness zielen (z. B. wenn das Bild in einem Hero-Bereich oder CTA-Modul liegt).
+- Keine Wiederverwendung von Formulierungen zwischen Variante A & B.
+- Keine internen oder technischen Begriffe wie „grafik_1.jpg“ oder „image_header_top“ verwenden.
 
-Erstelle für jedes Bild zwei Varianten eines aussagekräftigen, keyword-basierten Alt-Tags, die:
-- SEO-Kriterien erfüllen
-- auf Zielgruppe und Branche zugeschnitten sind
-- sich in Sprache, Tonalität und Betonung unterscheiden
-- Inhalte sichtbar beschreiben, auch wenn die Bilder nicht angezeigt werden
+5. Ausgabeformat (bitte exakt so verwenden):
+
+Bild 1:  
+- Variante A (sachlich, deskriptiv, keyword-orientiert): …  
+- Variante B (emotional, konversionsnah, zielgruppenorientiert): …
+
+Bild 2:  
+- Variante A: …  
+- Variante B: …
+
+[usw. für alle Bilder, die aus {url} + {image_context} erkannt wurden]
+
+Hinweis:  
+Antwort ausschließlich mit den zwei Alt-Text-Varianten pro Bild. Keine Erklärungen, keine allgemeinen SEO-Tipps, keine Platzhaltertexte.
 """

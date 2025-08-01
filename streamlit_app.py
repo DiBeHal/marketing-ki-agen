@@ -56,9 +56,9 @@ if not st.session_state.authenticated:
 st.set_page_config(page_title="Kunden-Upload & KI-Agent", layout="wide")
 
 # Persist Deep-Loop Session-State
-for key in ('last_task', 'last_mode', 'conv_id', 'questions', 'response'):
+for key in ('last_task', 'conv_id', 'questions', 'response'):
     if key not in st.session_state:
-        st.session_state[key] = None if key in ('last_task','last_mode','conv_id') else []
+        st.session_state[key] = None if key in ('last_task', 'conv_id') else []
 
 # -----------------------------------------------------------------------------  
 # Sidebar: User- vs. Admin-Ansicht  
@@ -110,8 +110,10 @@ if page == "⚙️ Admin-Dashboard":
             usage_grp['output_tokens'] * 0.00001395
         )
         st.dataframe(usage_grp)
-        pivot = usage_grp.pivot(index='customer_id', columns='mode', values='cost').fillna(0)
-        st.bar_chart(pivot)
+        summary = usage_grp.groupby('customer_id')['cost'].sum().reset_index()
+        summary = summary.set_index('customer_id')
+        st.bar_chart(summary)
+
     else:
         st.info("Noch keine Usage-Daten.")
 
@@ -156,7 +158,7 @@ if page == "⚙️ Admin-Dashboard":
     for cid in customers:
         with st.expander(f"Kunde {cid}"):
             st.write("Letzte Tasks", tasks_df[tasks_df["customer_id"] == cid][['task','timestamp']])
-            st.write("Token Usage", usage[usage["customer_id"] == cid][['mode','input_tokens','output_tokens','timestamp']])
+            st.write("Token Usage", usage[usage["customer_id"] == cid][['input_tokens','output_tokens','timestamp']])
             st.write("Feedback", feedback[feedback["customer_id"] == cid][['rating','comment','timestamp']])
             st.write("Rohes Log", df[df["customer_id"] == cid])
 
@@ -193,9 +195,8 @@ if st.button("✅ Kundenprofil erstellen"):
 st.markdown("---")
 st.header("🎯 Marketing-Tasks mit KI-Agent")
 
-# Mode- & Task-Auswahl
-mode_label = st.radio("Modus wählen:", ["⚡ Schnell", "🧠 Tiefenanalyse"], horizontal=True)
-mode = "fast" if mode_label == "⚡ Schnell" else "deep"
+mode = "deep"
+
 
 # ---------------------------------------
 # 🧠 Gedächtnis-Verwaltung (FAISS)
@@ -229,6 +230,7 @@ with st.expander("🧠 Gedächtnis-Verwaltung (FAISS)", expanded=False):
             except Exception as e:
                 st.error(f"Fehler bei der Suche: {e}")
 
+st.markdown("🔍 Aktiver Modus: **Tiefenanalyse** (alle Aufgaben laufen in ausführlicher Analyse)")
 task = st.selectbox("Wähle eine Aufgabe:", [
     "–",
     "Content Analyse",
@@ -239,18 +241,16 @@ task = st.selectbox("Wähle eine Aufgabe:", [
     "Technisches SEO (Lighthouse)",
     "Kampagnenplanung",
     "Landingpage Strategie",
-    "Monatsreport",
     "Marketingmaßnahmen planen",
     "Alt-Tag Generator"
 ])
 
 # Reset bei Task- oder Modus-Wechsel
-if task != st.session_state.last_task or mode != st.session_state.last_mode:
+if task != st.session_state.last_task:
     st.session_state.conv_id = None
     st.session_state.questions = []
     st.session_state.response = ""
     st.session_state.last_task = task
-    st.session_state.last_mode = mode
 if "start_agent" not in st.session_state:
     st.session_state.start_agent = False
 
@@ -557,9 +557,11 @@ elif task == "Themen extrahieren":
 # Externe Datenquellen (automatisch vs. manuell)
 # -------------------------------
 
-show_sources = (
-    mode == "deep" or (mode == "fast" and task == "Content Writing")
-)
+show_sources = task in [
+    "Content Analyse", "Content Writing", "Kampagnenplanung",
+    "Landingpage Strategie", "SEO Optimierung",
+    "Marketingmaßnahmen planen", "Wettbewerbsanalyse"
+]
 
 rss_input = trend_input = destatis_input = ""
 params["use_auto_sources"] = False  # Standardwert
@@ -748,7 +750,6 @@ if ((not params.get("use_auto_sources")) or st.session_state.get("themen_bestaet
         "type": "task_run",
         "customer_id": params.get("customer_id"),
         "task": task_id,
-        "mode": mode
     })
 
     # Rückfragen initialisieren (falls vorhanden)

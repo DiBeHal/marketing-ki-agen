@@ -53,9 +53,6 @@ TASK_REQUIREMENTS = {
     "landingpage_strategy": {
         "url": "required"
     },
-    "monthly_report": {
-        "customer_id": "required"
-    },
     "tactical_actions": {
         "text|url|customer_id": "any_of"
     },
@@ -68,17 +65,18 @@ TASK_REQUIREMENTS = {
 }
 
 from agent.prompts import (
-    content_analysis_prompt_fast, content_analysis_prompt_deep,
-    content_write_prompt_fast, content_write_prompt_deep,
-    competitive_analysis_prompt_fast, competitive_analysis_prompt_deep,
-    campaign_plan_prompt_fast, campaign_plan_prompt_deep,
-    landingpage_strategy_contextual_prompt_fast, landingpage_strategy_contextual_prompt_deep,
-    seo_audit_prompt_fast, seo_audit_prompt_deep,
-    seo_optimization_prompt_fast, seo_optimization_prompt_deep,
-    seo_lighthouse_prompt_fast, seo_lighthouse_prompt_deep,
-    monthly_report_prompt_fast, monthly_report_prompt_deep,
-    tactical_actions_prompt_fast, tactical_actions_prompt_deep
+    content_analysis_prompt_deep,
+    content_write_prompt_deep,
+    competitive_analysis_prompt_deep,
+    campaign_plan_prompt_deep,
+    landingpage_strategy_contextual_prompt_deep,
+    seo_audit_prompt_deep,
+    seo_optimization_prompt_deep,
+    seo_lighthouse_prompt_deep,
+    tactical_actions_prompt_deep,
+    alt_tag_writer_prompt_deep
 )
+
 
 from agent.prompts import (
     alt_tag_writer_prompt_fast, alt_tag_writer_prompt_deep
@@ -193,10 +191,9 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
     rss_snippets = trends_insights = destatis_stats = ""
     facebook_ads = google_ads = linkedin_ads = ""
 
-    if reasoning_mode == "deep":
-        rss_snippets = fetch_rss_snippets(kwargs.get("rss_feeds", []))
-        trends_insights = fetch_trends_insights(kwargs.get("trend_keywords", []))
-        destatis_stats = fetch_destatis_stats(kwargs.get("destatis_queries", []))
+    rss_snippets = fetch_rss_snippets(kwargs.get("rss_feeds", []))
+    trends_insights = fetch_trends_insights(kwargs.get("trend_keywords", []))
+    destatis_stats = fetch_destatis_stats(kwargs.get("destatis_queries", []))
 
     # Fallback: Automatische Quellen basierend auf erkannter Themenliste
     rss_snippets = kwargs.get("rss_snippets", [])
@@ -235,7 +232,7 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
             kwargs.get("pdf_path")
         )
 
-        tmpl = content_analysis_prompt_fast if reasoning_mode == "fast" else content_analysis_prompt_deep
+        tmpl = content_analysis_prompt_deep
         prompt = tmpl.format(
             context=ctx,
             zielgruppe=zielgruppe,
@@ -261,11 +258,7 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
             kwargs.get("pdf_path")
         )
 
-        tmpl = (
-            content_writer_prompt_fast
-            if reasoning_mode == "fast"
-            else content_writer_prompt_deep
-        )
+        tmpl = content_writer_prompt_deep
 
         prompt = tmpl.format(
             context=ctx,
@@ -273,7 +266,6 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
             tonalitaet=tonalitaet,
             thema=thema
         )
-
         resp = llm.invoke(prompt)
         result = resp.content if hasattr(resp, "content") else str(resp)
         return {"response": result, "prompt_used": prompt}
@@ -314,8 +306,8 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
             except Exception as e:
                 mitbewerber_kontexte.append(f"[Fehler bei Recherche {name}: {e}]")
 
-        # Nur bei Deep-Modus: zusätzliche Recherche
-        if reasoning_mode == "deep" and not mitbewerber_urls and not mitbewerber_namen:
+        # Automatische zusätzliche Recherche nur bei fehlenden Vorgaben
+        if not mitbewerber_urls and not mitbewerber_namen:
             suche = f"{kwargs.get('branche', '')} {kwargs.get('zielgruppe', '')} Anbieter"
             competitor_sites = find_competitor_sites(suche, max_results=2)
             for site in competitor_sites:
@@ -325,20 +317,20 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
                 except Exception as e:
                     mitbewerber_kontexte.append(f"[Fehler beim Laden von {site}: {e}]")
 
-        # Ads-Analyse (nur deep)
+        # Ads-Analyse
         google_ads = facebook_ads = linkedin_ads = "[Keine Daten]"
-        if reasoning_mode == "deep":
-            themenbegriffe = kwargs.get("ads_keywords", [])
-            company = kwargs.get("customer_name", "")
-            if kwargs.get("facebook_company"):
-                facebook_ads = scrape_facebook_ads(company, themenbegriffe)
-            if kwargs.get("google_company"):
-                google_ads = scrape_google_ads(company, themenbegriffe)
-            if kwargs.get("linkedin_company"):
-                linkedin_ads = scrape_linkedin_ads(company, themenbegriffe)
+        themenbegriffe = kwargs.get("ads_keywords", [])
+        company = kwargs.get("customer_name", "")
+        if kwargs.get("facebook_company"):
+            facebook_ads = scrape_facebook_ads(company, themenbegriffe)
+        if kwargs.get("google_company"):
+            google_ads = scrape_google_ads(company, themenbegriffe)
+        if kwargs.get("linkedin_company"):
+            linkedin_ads = scrape_linkedin_ads(company, themenbegriffe)
+
 
         # Prompt setzen
-        tmpl = competitive_analysis_prompt_fast if reasoning_mode == "fast" else competitive_analysis_prompt_deep
+        tmpl = competitive_analysis_prompt_deep
         prompt = tmpl.format(
             kunde_name=kwargs.get("customer_name", "Unsere Firma"),
             branche=kwargs.get("branche", "Allgemein"),
@@ -374,23 +366,13 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
 
         tmpl = seo_audit_prompt_fast if reasoning_mode == "fast" else seo_audit_prompt_deep
 
-        if reasoning_mode == "fast":
-            prompt = tmpl.format(
-                title=seo.get("title", ""),
-                description=seo.get("description", ""),
-                headlines=seo.get("headlines", []),
-                text=seo.get("text", ""),
-                zielgruppe=zielgruppe,
-                thema=thema,
-                keywords=keywords
-            )
-        else:
-            prompt = tmpl.format(
-                contexts_combined=ctx,
-                rss_snippets=kwargs.get("rss_snippets", "[Keine RSS-Daten]"),
-                trends_insights=kwargs.get("trends_insights", "[Keine Trenddaten]")
-            )
-
+        tmpl = seo_audit_prompt_deep
+        prompt = tmpl.format(
+            contexts_combined=ctx,
+            rss_snippets=kwargs.get("rss_snippets", "[Keine RSS-Daten]"),
+            trends_insights=kwargs.get("trends_insights", "[Keine Trenddaten]"),
+            destatis_stats=kwargs.get("destatis_stats", "[Keine Marktdaten]")
+        )
 
         resp = llm.invoke(prompt)
         result = resp.content if hasattr(resp, "content") else str(resp)
@@ -405,26 +387,16 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
             kwargs.get("customer_id"),
             kwargs.get("pdf_path")
         )
-        tmpl = (
-            seo_optimization_prompt_fast
-            if reasoning_mode == "fast"
-            else seo_optimization_prompt_deep
+        tmpl = seo_optimization_prompt_deep
+        prompt = tmpl.format(
+            contexts_combined=ctx,
+            seo_audit_summary=kwargs.get("seo_audit_summary", "[Keine Voranalyse verfügbar]"),
+            lighthouse_json=kwargs.get("lighthouse_json", "[Keine Lighthouse-Daten]"),
+            zielgruppe=kwargs.get("zielgruppe", "Zielgruppe nicht angegeben"),
+            ziel=kwargs.get("ziel", "Ziel nicht angegeben"),
+            thema=kwargs.get("thema", "Kein Thema angegeben")
         )
-        
-        if reasoning_mode == "fast":
-            prompt = tmpl.format(
-                contexts_combined=ctx,
-                seo_audit_summary=kwargs.get("seo_audit_summary", "[Keine Voranalyse verfügbar]")
-            )
-        else:
-            prompt = tmpl.format(
-                contexts_combined=ctx,
-                seo_audit_summary=kwargs.get("seo_audit_summary", "[Keine Voranalyse verfügbar]"),
-                lighthouse_json=kwargs.get("lighthouse_json", "[Keine Lighthouse-Daten]"),
-                zielgruppe=kwargs.get("zielgruppe", "Zielgruppe nicht angegeben"),
-                ziel=kwargs.get("ziel", "Ziel nicht angegeben"),
-                thema=kwargs.get("thema", "Kein Thema angegeben")
-            )
+
         resp = llm.invoke(prompt)
         result = resp.content if hasattr(resp, "content") else str(resp)
         return {"response": result, "prompt_used": prompt}
@@ -441,27 +413,16 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
         zg = kwargs.get("zielgruppe", "")
         th = kwargs.get("thema", "")
 
-        tmpl = (
-            campaign_plan_prompt_fast
-            if reasoning_mode == "fast"
-            else campaign_plan_prompt_deep
+        tmpl = campaign_plan_prompt_deep
+        prompt = tmpl.format(
+            context=ctx,
+            zielgruppe=zg,
+            thema=th,
+            rss_snippets=rss_snippets,
+            trends_insights=trends_insights,
+            destatis_stats=destatis_stats
         )
 
-        if reasoning_mode == "fast":
-            prompt = tmpl.format(
-                context=ctx,
-                zielgruppe=zg,
-                thema=th
-            )
-        else:
-            prompt = tmpl.format(
-                context=ctx,
-                zielgruppe=zg,
-                thema=th,
-                rss_snippets=rss_snippets,
-                trends_insights=trends_insights,
-                destatis_stats=destatis_stats
-            )
         resp = llm.invoke(prompt)
         result = resp.content if hasattr(resp, "content") else str(resp)
         return {"response": result, "prompt_used": prompt}
@@ -491,23 +452,14 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
             kwargs.get("pdf_path")
         )
 
-        tmpl = seo_lighthouse_prompt_fast if reasoning_mode == "fast" else seo_lighthouse_prompt_deep
-        if reasoning_mode == "fast":
-            prompt = tmpl.format(
-                url=url,
-                branche=branche,
-                zielgruppe=zielgruppe,
-                text=text,
-                lighthouse_data=lighthouse_data
-            )
-        else:
-            prompt = tmpl.format(
-                url=url,
-                branche=branche,
-                zielgruppe=zielgruppe,
-                text=text,
-                lighthouse_reports_combined=lighthouse_data
-            )
+        tmpl = seo_lighthouse_prompt_deep
+        prompt = tmpl.format(
+            url=url,
+            branche=branche,
+            zielgruppe=zielgruppe,
+            text=text,
+            lighthouse_reports_combined=lighthouse_data
+        )
 
         resp = llm.invoke(prompt)
         result = resp.content if hasattr(resp, "content") else str(resp)
@@ -531,52 +483,24 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
         if pdfp and os.path.exists(pdfp):
             ctx_att = load_pdf(pdfp)
 
-        tmpl = (
-            landingpage_strategy_contextual_prompt_fast
-            if reasoning_mode == "fast"
-            else landingpage_strategy_contextual_prompt_deep
+        tmpl = landingpage_strategy_contextual_prompt_deep
+        prompt = tmpl.format(
+            context_website=ctx_web,
+            context_anhang=ctx_att,
+            zielgruppe=zielgruppe,
+            ziel=ziel,
+            thema=angebot,
+            rss_snippets=kwargs.get("rss_snippets", "[Keine RSS-Daten]"),
+            trends_insights=kwargs.get("trends_insights", "[Keine Trenddaten]"),
+            destatis_stats=kwargs.get("destatis_stats", "[Keine Destatis-Daten]"),
+            google_ads=kwargs.get("google_ads", "[Keine Google Ads]"),
+            facebook_ads=kwargs.get("facebook_ads", "[Keine Facebook Ads]"),
+            linkedin_ads=kwargs.get("linkedin_ads", "[Keine LinkedIn Ads]")
         )
 
-        # Prompt-Befüllung
-        if reasoning_mode == "fast":
-            prompt = tmpl.format(
-                context_website=ctx_web,
-                context_anhang=ctx_att,
-                zielgruppe=zielgruppe,
-                angebot=angebot
-            )
-        else:
-            prompt = tmpl.format(
-                context_website=ctx_web,
-                context_anhang=ctx_att,
-                zielgruppe=zielgruppe,
-                ziel=ziel,
-                thema=angebot,
-                rss_snippets=kwargs.get("rss_snippets", "[Keine RSS-Daten]"),
-                trends_insights=kwargs.get("trends_insights", "[Keine Trenddaten]"),
-                destatis_stats=kwargs.get("destatis_stats", "[Keine Destatis-Daten]"),
-                google_ads=kwargs.get("google_ads", "[Keine Google Ads]"),
-                facebook_ads=kwargs.get("facebook_ads", "[Keine Facebook Ads]"),
-                linkedin_ads=kwargs.get("linkedin_ads", "[Keine LinkedIn Ads]")
-            )
         resp = llm.invoke(prompt)
         result = resp.content if hasattr(resp, "content") else str(resp)
         return {"response": result, "prompt_used": prompt}
-
-    elif task == "monthly_report":
-        check_task_requirements(task, kwargs)
-        ctx = get_context_from_text_or_url(
-            kwargs.get("text", ""), kwargs.get("url", ""), kwargs.get("customer_id")
-        )
-        ctx = get_context_from_text_or_url(kwargs.get("text", ""), kwargs.get("url", ""), kwargs.get("customer_id"), kwargs.get("pdf_path"))
-        tmpl = (monthly_report_prompt_fast
-                if reasoning_mode == "fast"
-                else monthly_report_prompt_deep)
-        prompt = tmpl.format(context=ctx)
-        resp = llm.invoke(prompt)
-        result = resp.content if hasattr(resp, "content") else str(resp)
-        return {"response": result, "prompt_used": prompt}
-
 
     elif task == "tactical_actions":
         check_task_requirements(task, kwargs)
@@ -588,22 +512,14 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
             kwargs.get("pdf_path")
         )
 
-        tmpl = (
-            tactical_actions_prompt_fast
-            if reasoning_mode == "fast"
-            else tactical_actions_prompt_deep
+        tmpl = tactical_actions_prompt_deep
+        prompt = tmpl.format(
+            context=ctx,
+            seo_summary=kwargs.get("seo_summary", "[Kein SEO-Audit verfügbar]"),
+            zielgruppe=kwargs.get("zielgruppe", "Zielgruppe nicht definiert"),
+            themen=kwargs.get("thema", "Kein Thema angegeben"),
+            zeitraum=kwargs.get("zeitraum", "Kein Zeitraum angegeben")
         )
-
-        if reasoning_mode == "fast":
-            prompt = tmpl.format(context=ctx)
-        else:
-            prompt = tmpl.format(
-                context=ctx,
-                seo_summary=kwargs.get("seo_summary", "[Kein SEO-Audit verfügbar]"),
-                zielgruppe=kwargs.get("zielgruppe", "Zielgruppe nicht definiert"),
-                themen=kwargs.get("thema", "Kein Thema angegeben"),
-                zeitraum=kwargs.get("zeitraum", "Kein Zeitraum angegeben")
-            )
 
         resp = llm.invoke(prompt)
         result = resp.content if hasattr(resp, "content") else str(resp)
@@ -622,9 +538,9 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
             filtered_images = [
                 img for img in image_data
                 if not img["src"].lower().endswith(".svg")
-            ] if reasoning_mode == "fast" else image_data
+            ]
+            limit = 40
 
-            limit = 20 if reasoning_mode == "fast" else 40
             img_context_lines = []
             for idx, img in enumerate(filtered_images[:limit], 1):
                 img_context_lines.append(f"Bild {idx}: {img['src']}")
@@ -634,8 +550,8 @@ def run_agent(task: str, reasoning_mode: str = "fast", conversation_id: Optional
         else:
             image_context = f"[Fehler beim Laden der Bilder: {image_data.get('error')}]"
 
-        from agent.prompts import alt_tag_writer_prompt_fast, alt_tag_writer_prompt_deep
-        tmpl = alt_tag_writer_prompt_fast if reasoning_mode == "fast" else alt_tag_writer_prompt_deep
+        from agent.prompts import alt_tag_writer_prompt_deep
+        tmpl = alt_tag_writer_prompt_deep
 
         prompt = tmpl.format(
             url=url,
@@ -755,7 +671,7 @@ Text:
         "type": "task_complete",
         "customer_id": kwargs.get("customer_id"),
         "task": task,
-        "mode": reasoning_mode
+        "mode": "standard"
     })
 
     return {"response": content, "questions": extract_questions_from_response(content), "conversation_id": conversation_id}
