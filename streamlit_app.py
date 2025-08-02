@@ -539,6 +539,8 @@ elif task == "Alt-Tag Generator":
     zielgruppe = st.text_input("👥 Zielgruppe (optional)", placeholder="z. B. Frauen 30–50, lokal interessiert")
     branche = st.text_input("🏢 Branche / Produktfeld (optional)", placeholder="z. B. Kosmetikstudio, Bäckerei, Anwaltskanzlei")
     kontexttext = st.text_area("📄 Optionaler Kontexttext oder Beschreibung", height=150)
+    include_svg = st.checkbox("🖼️ SVG-Bilder einbeziehen?", value=False, help="Standardmäßig werden SVGs gefiltert. Aktiviere diese Option, wenn auch Icons und Logos wichtig sind.")
+
 
     if not url.strip():
         st.error("❗ Bitte gib eine gültige Website-URL an.")
@@ -552,7 +554,8 @@ elif task == "Alt-Tag Generator":
         "zielgruppe": zielgruppe.strip(),
         "branche": branche.strip(),
         "text": combined_context,
-        "customer_id": customer_id
+        "customer_id": customer_id,
+        "include_svg": include_svg
     }
 
     if optional_pdf_path:

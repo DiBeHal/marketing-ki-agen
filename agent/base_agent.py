@@ -608,6 +608,8 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
         branche = kwargs.get("branche", "Allgemein")
         zielgruppe = kwargs.get("zielgruppe", "Kunden")
         text = kwargs.get("text", "")
+        include_svg = kwargs.get("include_svg", False)
+
         if not text and url:
             try:
                 html = scrape_html(url)
@@ -620,7 +622,7 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
         if isinstance(image_data, list):
             filtered_images = [
                 img for img in image_data
-                if not img["src"].lower().endswith(".svg")
+                if include_svg or not img["src"].lower().endswith(".svg")  # <- NEU
             ]
             limit = 40
             img_context_lines = []
