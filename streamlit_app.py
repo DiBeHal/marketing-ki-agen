@@ -283,6 +283,25 @@ if task == "Content Analyse":
     if not combined_context and not url.strip() and not optional_pdf_path:
         st.error("❗ Bitte gib mindestens Kontexttext, URL oder PDF an.")
         st.stop()
+    if use_auto_sources:
+        theme_text = " ".join([
+            thema,
+            zielgruppe,
+            combined_context
+        ]).strip()
+
+        if theme_text:
+            try:
+                extract_result = run_agent(task="extract_topics", text=theme_text)
+                topic_keywords = extract_result["response"].strip().split("\n")
+                topic_keywords = [t.strip("-• ").strip() for t in topic_keywords if len(t.strip()) > 3]
+            except Exception as e:
+                st.warning(f"⚠️ Themen-Extraktion fehlgeschlagen: {e}")
+                topic_keywords = []
+            else:
+            topic_keywords = []
+
+        params["topic_keywords"] = topic_keywords
 
     params = {
         "task": task_id,
