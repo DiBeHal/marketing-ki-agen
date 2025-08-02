@@ -277,7 +277,7 @@ briefing_typ = kanal = thema = zielgruppe = tonalitaet = ""
 
 if task == "Content Analyse":
     task_id = "content_analysis"
-
+    use_auto_sources = st.session_state.get("use_auto_sources", False)
     combined_context = (customer_memory + "\n\n" + context).strip()
 
     if not combined_context and not url.strip() and not optional_pdf_path:
