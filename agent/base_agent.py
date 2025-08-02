@@ -611,6 +611,18 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
 
         text = kwargs.get("text", "").strip()
         if not text:
+            # Versuch Kontext zu erzeugen aus URL, customer_id oder PDF
+            try:
+                text = get_context_from_text_or_url(
+                    kwargs.get("text", ""),
+                    kwargs.get("url", ""),
+                    kwargs.get("customer_id"),
+                    kwargs.get("pdf_path")
+                ).strip()
+            except Exception as e:
+                raise ValueError(f"❗ Kein Text übergeben für Topic-Extraktion. (Fallback fehlgeschlagen: {e})")
+
+        if not text:
             raise ValueError("❗ Kein Text übergeben für Topic-Extraktion.")
 
         prompt = f"""
@@ -620,7 +632,6 @@ Diese sollen sich für weitere Recherche in Google Trends, RSS-News oder DESTATI
 Text:
 {text}
 """
-
         resp = llm.invoke(prompt)
         result = resp.content if hasattr(resp, "content") else str(resp)
         return {"response": result, "prompt_used": prompt}
