@@ -278,15 +278,15 @@ briefing_typ = kanal = thema = zielgruppe = tonalitaet = ""
 if task == "Content Analyse":
     task_id = "content_analysis"
 
-    text_input = (customer_memory + "\n\n" + context).strip()
+    combined_context = (customer_memory + "\n\n" + context).strip()
 
-    if not text_input and not url.strip():
-        st.error("❗ Bitte gib mindestens Kontexttext oder URL an.")
+    if not combined_context and not url.strip() and not optional_pdf_path:
+        st.error("❗ Bitte gib mindestens Kontexttext, URL oder PDF an.")
         st.stop()
 
     params = {
         "task": task_id,
-        "text": text_input,
+        "text": combined_context,
         "url": url.strip(),
         "customer_id": customer_id
     }
