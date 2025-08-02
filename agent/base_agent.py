@@ -217,6 +217,14 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
 
     if task == "content_analysis":
         check_task_requirements(task, kwargs)
+        if not any([
+            kwargs.get("text", "").strip(),
+            kwargs.get("url", "").strip(),
+            kwargs.get("customer_id"),
+            kwargs.get("pdf_path")
+        ]):
+            raise ValueError("❗ Kein Kontext übergeben – bitte Text, URL, Kunden-ID oder PDF angeben.")
+
         zielgruppe = kwargs.get("zielgruppe", "Zielgruppe nicht angegeben")
         thema = kwargs.get("thema", "Kein Thema angegeben")
 
