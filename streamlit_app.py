@@ -290,11 +290,9 @@ if task == "Content Analyse":
             combined_context
         ]).strip()
 
-        if theme_text:
+        if theme_text and len(theme_text.strip()) > 10:
             try:
                 extract_result = run_agent(task="extract_topics", text=theme_text)
-                topic_keywords = extract_result["response"].strip().split("\n")
-                topic_keywords = [t.strip("-• ").strip() for t in topic_keywords if len(t.strip()) > 3]
             except Exception as e:
                 st.warning(f"⚠️ Themen-Extraktion fehlgeschlagen: {e}")
                 topic_keywords = []
