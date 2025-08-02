@@ -665,3 +665,30 @@ Bild 2:
 Hinweis:  
 Antwort ausschließlich mit den zwei Alt-Text-Varianten pro Bild. Keine Erklärungen, keine allgemeinen SEO-Tipps, keine Platzhaltertexte.
 """
+
+# ===== Cluster 11: Themen extrahieren =====
+extract_topics_prompt_deep = """
+1. Rolle:
+Du bist ein erfahrener Research- und Analyse-Agent mit Fokus auf Trendbeobachtung und strategische Themenfindung. Du extrahierst aus beliebigen Inhalten die wichtigsten übergreifenden Themen, Begriffe und Suchcluster, die sich für weitere Recherche, Monitoring oder Contentplanung eignen.
+
+2. Anweisung:
+Analysiere den folgenden Text und identifiziere maximal 5 relevante Themen oder Begriffe, die inhaltlich zentral, wiedererkennbar und recherchierbar sind. Deine Auswahl soll für externe Datenquellen geeignet sein (z. B. Google Trends, RSS, Marktdatenbanken). Vermeide zu allgemeine Begriffe (z. B. „Marketing“, „Unternehmen“) und auch zu spezifische Namen (z. B. „Max Mustermann GmbH“), sofern sie nicht übertragbar sind. Ziehe sinnvolle Oberbegriffe oder Themencluster vor. Wenn der Text unzureichend ist, bitte um eine konkretere oder ausführlichere Eingabe.
+
+3. Kontext:
+Der Text stammt in der Regel aus Webseiten, PDFs oder manuell erstellten Texten. Ziel ist es, daraus übergeordnete Themen für Markt- und Wettbewerbsrecherche abzuleiten. Die Ergebnisse sollen maschinenlesbar und gleichzeitig für menschliche Bewertung sinnvoll gruppierbar sein.
+
+4. Beispiele:
+- Gut: „Fachkräftemangel im Mittelstand“, „Digitalisierung im Handwerk“, „Nachhaltigkeit in Lieferketten“
+- Nicht geeignet: „Marketing“, „Jetzt Kontakt aufnehmen“, „Max Mustermann GmbH“
+- Clusterfähig: „Employer Branding“, „B2B Social Media Strategien“, „Energieeffizienz Förderprogramme“
+
+5. Eingabeparameter:
+- Text: {text}
+
+6. Output Format:
+Bitte liefere eine Liste von maximal 5 Themen (eine Zeile pro Thema, keine Nummerierung). Kein Fließtext, keine Meta-Erklärungen. Falls unzureichender Kontext, antworte mit einem klaren Hinweis:
+
+"Es tut mir leid, aber der bereitgestellte Text enthält nicht genug Informationen, um relevante Themen oder Begriffe zur weiteren Recherche zu extrahieren. Könnten Sie bitte mehr Kontext oder einen ausführlicheren Text zur Verfügung stellen?"
+"""
+
+

@@ -76,7 +76,8 @@ from agent.prompts import (
     seo_optimization_prompt_deep,
     seo_lighthouse_prompt_deep,
     tactical_actions_prompt_deep,
-    alt_tag_writer_prompt_deep
+    alt_tag_writer_prompt_deep,
+    extract_topics_prompt_deep
 )
 
 from agent.clarifier import extract_questions_from_response, merge_clarifications
@@ -258,7 +259,7 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
             kwargs.get("pdf_path")
         )
 
-        tmpl = content_writer_prompt_deep
+        tmpl = content_write_prompt_deep
 
         prompt = tmpl.format(
             context=ctx,
@@ -273,29 +274,21 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
     elif task == "competitive_analysis":
         check_task_requirements(task, kwargs)
 
-        # Kontext des Kunden
-        ctx = ""
-        if kwargs.get("text", "").strip():
-            ctx = kwargs["text"]
-        elif kwargs.get("url", ""):
-            try:
-                html = scrape_html(kwargs["url"])
-                ctx = "\n".join(extract_text_blocks(html))
-            except Exception as e:
-                ctx = f"[Fehler beim Laden und Parsen von URL: {e}]"
-
-        if not ctx and kwargs.get("customer_id"):
-            ctx = load_customer_memory(kwargs["customer_id"])
-
-        if not ctx and kwargs.get("pdf_path") and os.path.exists(kwargs["pdf_path"]):
-            ctx = load_pdf(kwargs["pdf_path"])
+        try:
+            ctx_k = get_context_from_text_or_url(
+                kwargs.get("text", ""),
+                kwargs.get("eigene_url", "") or kwargs.get("url", ""),
+                kwargs.get("customer_id"),
+                kwargs.get("pdf_path")
+            )
+        except Exception as e:
+            ctx_k = f"[Fehler beim Laden des Kundenkontexts: {e}]"
 
         # Mitbewerber-Kontexte (aus URLs oder Namen)
         mitbewerber_urls = kwargs.get("wettbewerber_urls", [])
         mitbewerber_namen = kwargs.get("wettbewerber_namen", [])
         mitbewerber_kontexte = []
 
-        # Manuell angegebene URLs
         for url in mitbewerber_urls:
             try:
                 ctx_m = load_html(url.strip())
@@ -303,7 +296,6 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
             except Exception as e:
                 mitbewerber_kontexte.append(f"[Fehler beim Laden von {url}: {e}]")
 
-        # Manuell angegebene Namen (z. B. bei Fast-Modus)
         for name in mitbewerber_namen:
             try:
                 sites = find_competitor_sites(name, max_results=1)
@@ -315,7 +307,6 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
             except Exception as e:
                 mitbewerber_kontexte.append(f"[Fehler bei Recherche {name}: {e}]")
 
-        # Automatische zusätzliche Recherche nur bei fehlenden Vorgaben
         if not mitbewerber_urls and not mitbewerber_namen:
             suche = f"{kwargs.get('branche', '')} {kwargs.get('zielgruppe', '')} Anbieter"
             competitor_sites = find_competitor_sites(suche, max_results=2)
@@ -337,10 +328,8 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
         if kwargs.get("linkedin_company"):
             linkedin_ads = scrape_linkedin_ads(company, themenbegriffe)
 
-
-        # Prompt setzen
-        tmpl = competitive_analysis_prompt_deep
-        prompt = tmpl.format(
+        # Prompt
+        prompt = competitive_analysis_prompt_deep.format(
             kunde_name=kwargs.get("customer_name", "Unsere Firma"),
             branche=kwargs.get("branche", "Allgemein"),
             zielgruppe=kwargs.get("zielgruppe", "Kunden"),
@@ -358,13 +347,15 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
     elif task == "seo_audit":
         check_task_requirements(task, kwargs)
 
-        if not any([
-            kwargs.get("text", "").strip(),
-            kwargs.get("url", "").strip(),
-            kwargs.get("customer_id"),
-            kwargs.get("pdf_path")
-        ]):
-            raise ValueError("❗ Kein Kontext vorhanden – bitte Text, URL, Kunden-ID oder PDF angeben.")
+        try:
+            ctx = get_context_from_text_or_url(
+                kwargs.get("text", ""),
+                kwargs.get("url", ""),
+                kwargs.get("customer_id"),
+                kwargs.get("pdf_path")
+            )
+        except Exception as e:
+            ctx = f"[Fehler beim Laden des Kontexts: {e}]"
 
         url = kwargs.get("url", "")
         zielgruppe = kwargs.get("zielgruppe", "Zielgruppe nicht angegeben")
@@ -373,23 +364,17 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
         if isinstance(keywords, list):
             keywords = ", ".join(keywords)
 
-        ctx = ""
-        if kwargs.get("text", "").strip():
-            ctx = kwargs["text"]
-        elif url:
-            try:
-                html = scrape_html(url)
-                ctx = "\n".join(extract_text_blocks(html))
-            except Exception as e:
-                ctx = f"[Fehler beim Laden und Parsen von URL: {e}]"
-
-            ctx = load_customer_memory(kwargs["customer_id"])
-
-        if not ctx and kwargs.get("customer_id"):
-            ctx = load_customer_memory(kwargs["customer_id"])
-
-        if not ctx and kwargs.get("pdf_path") and os.path.exists(kwargs["pdf_path"]):
-            ctx = load_pdf(kwargs["pdf_path"])
+        try:
+            seo_signals = extract_seo_signals(url)
+            title = seo_signals.get("title", "")
+            meta_description = seo_signals.get("meta_description", "")
+            headings = "\n".join(seo_signals.get("headings", []))
+            num_links = seo_signals.get("num_links", 0)
+            cta_links = seo_signals.get("cta_links", 0)
+        except Exception as e:
+            title = meta_description = headings = ""
+            num_links = cta_links = 0
+            ctx += f"\n[Fehler beim SEO-Signale-Laden: {e}]"
 
         tmpl = seo_audit_prompt_deep
         prompt = tmpl.format(
@@ -397,6 +382,11 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
             zielgruppe=zielgruppe,
             thema=thema,
             keywords=keywords,
+            title=title,
+            meta_description=meta_description,
+            headings=headings,
+            num_links=num_links,
+            cta_links=cta_links,
             rss_snippets=kwargs.get("rss_snippets", "[Keine RSS-Daten]"),
             trends_insights=kwargs.get("trends_insights", "[Keine Trenddaten]"),
             destatis_stats=kwargs.get("destatis_stats", "[Keine Marktdaten]")
@@ -409,29 +399,15 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
     elif task in ["seo_optimize", "seo_optimization"]:
         check_task_requirements("seo_optimization", kwargs)
 
-        if not any([
-            kwargs.get("text", "").strip(),
-            kwargs.get("url", "").strip(),
-            kwargs.get("customer_id"),
-            kwargs.get("pdf_path")
-        ]):
-            raise ValueError("❗ Kein Kontext vorhanden – bitte Text, URL, Kunden-ID oder PDF angeben.")
-
-        ctx = ""
-        if kwargs.get("text", "").strip():
-            ctx = kwargs["text"]
-        elif kwargs.get("url", ""):
-            try:
-                html = scrape_html(kwargs["url"])
-                ctx = "\n".join(extract_text_blocks(html))
-            except Exception as e:
-                ctx = f"[Fehler beim Laden und Parsen von URL: {e}]"
-
-        if not ctx and kwargs.get("customer_id"):
-            ctx = load_customer_memory(kwargs["customer_id"])
-
-        if not ctx and kwargs.get("pdf_path") and os.path.exists(kwargs["pdf_path"]):
-            ctx = load_pdf(kwargs["pdf_path"])
+        try:
+            ctx = get_context_from_text_or_url(
+                kwargs.get("text", ""),
+                kwargs.get("url", ""),
+                kwargs.get("customer_id"),
+                kwargs.get("pdf_path")
+            )
+        except Exception as e:
+            ctx = f"[Fehler beim Laden des Kontexts: {e}]"
 
         tmpl = seo_optimization_prompt_deep
         prompt = tmpl.format(
@@ -440,8 +416,12 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
             lighthouse_json=kwargs.get("lighthouse_json", "[Keine Lighthouse-Daten]"),
             zielgruppe=kwargs.get("zielgruppe", "Zielgruppe nicht angegeben"),
             ziel=kwargs.get("ziel", "Ziel nicht angegeben"),
-            thema=kwargs.get("thema", "Kein Thema angegeben")
+            thema=kwargs.get("thema", "Kein Thema angegeben"),
+            rss_snippets=kwargs.get("rss_snippets", "[Keine RSS-Daten]"),
+            trends_insights=kwargs.get("trends_insights", "[Keine Trenddaten]"),
+            destatis_stats=kwargs.get("destatis_stats", "[Keine Marktdaten]")
         )
+
 
         resp = llm.invoke(prompt)
         result = resp.content if hasattr(resp, "content") else str(resp)
@@ -495,44 +475,32 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
     elif task == "seo_lighthouse":
         check_task_requirements(task, kwargs)
 
-        if not any([
-            kwargs.get("text", "").strip(),
-            kwargs.get("url", "").strip(),
-            kwargs.get("customer_id"),
-            kwargs.get("pdf_path")
-        ]):
-            raise ValueError("❗ Kein Kontext vorhanden – bitte Text, URL, Kunden-ID oder PDF angeben.")
-
         url = kwargs.get("url", "")
         zielgruppe = kwargs.get("zielgruppe", "")
         thema = kwargs.get("thema", "")
         branche = kwargs.get("branche", "Allgemein")
-        text = kwargs.get("text", "")
 
+        # Kontextbeschaffung
+        try:
+            ctx = get_context_from_text_or_url(
+                kwargs.get("text", ""),
+                url,
+                kwargs.get("customer_id"),
+                kwargs.get("pdf_path")
+            )
+        except Exception as e:
+            ctx = f"[Fehler beim Laden des Kontexts: {e}]"
+
+        # Lighthouse-Daten sammeln
         lighthouse_data = "(Keine Lighthouse-Daten verfügbar)"
         try:
             raw_lh = run_lighthouse(url)
             if isinstance(raw_lh, dict):
                 lighthouse_data = json.dumps(raw_lh.get("categories", {}).get("seo", {}), indent=2)
         except Exception as e:
-            lighthouse_data = f"[Fehler: {e}]"
+            lighthouse_data = f"[Fehler bei Lighthouse-Analyse: {e}]"
 
-        ctx = ""
-        if text.strip():
-            ctx = text
-        elif url:
-            try:
-                html = scrape_html(url)
-                ctx = "\n".join(extract_text_blocks(html))
-            except Exception as e:
-                ctx = f"[Fehler beim Laden und Parsen von URL: {e}]"
-
-        if not ctx and kwargs.get("customer_id"):
-            ctx = load_customer_memory(kwargs["customer_id"])
-
-        if not ctx and kwargs.get("pdf_path") and os.path.exists(kwargs["pdf_path"]):
-            ctx = load_pdf(kwargs["pdf_path"])
-
+        # Prompt
         tmpl = seo_lighthouse_prompt_deep
         prompt = tmpl.format(
             context_website=ctx,
@@ -587,29 +555,37 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
     elif task == "tactical_actions":
         check_task_requirements(task, kwargs)
 
-        if not any([
-            kwargs.get("text", "").strip(),
-            kwargs.get("url", "").strip(),
-            kwargs.get("customer_id"),
-            kwargs.get("pdf_path")
-        ]):
-            raise ValueError("❗ Kein Kontext vorhanden – bitte Text, URL, Kunden-ID oder PDF angeben.")
+        # Kontext extrahieren
+        try:
+            ctx = get_context_from_text_or_url(
+                kwargs.get("text", ""),
+                kwargs.get("url", ""),
+                kwargs.get("customer_id"),
+                kwargs.get("pdf_path")
+            )
+        except Exception as e:
+            ctx = f"[Fehler beim Laden des Kontexts: {e}]"
 
-        ctx = ""
-        if kwargs.get("text", "").strip():
-            ctx = kwargs["text"]
-        elif kwargs.get("url", ""):
-            try:
-                html = scrape_html(kwargs["url"])
-                ctx = "\n".join(extract_text_blocks(html))
-            except Exception as e:
-                ctx = f"[Fehler beim Laden und Parsen von URL: {e}]"
+        # Versuch automatische Themenextraktion, falls nicht manuell gesetzt
+        topic_keywords = []
+        try:
+            theme_text = " ".join([
+                kwargs.get("ziel", ""),
+                kwargs.get("zeitfenster", ""),
+                ctx
+            ]).strip()
 
-        if not ctx and kwargs.get("customer_id"):
-            ctx = load_customer_memory(kwargs["customer_id"])
+            if theme_text:
+                extract_result = run_agent(
+                    task="extract_topics",
+                    text=theme_text
+                )
+                topic_keywords = extract_result["response"].strip().split("\n")
+                topic_keywords = [t.strip("-• ").strip() for t in topic_keywords if len(t.strip()) > 3]
+        except Exception as e:
+            topic_keywords = []
+            log_event({"type": "warning", "message": f"Topic-Extraktion fehlgeschlagen: {e}"})
 
-        if not ctx and kwargs.get("pdf_path") and os.path.exists(kwargs["pdf_path"]):
-            ctx = load_pdf(kwargs["pdf_path"])
 
         tmpl = tactical_actions_prompt_deep
         prompt = tmpl.format(
@@ -618,7 +594,8 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
             zeitfenster=kwargs.get("zeitfenster", "Unbekannter Zeitraum"),
             rss_snippets=kwargs.get("rss_snippets", "[Keine RSS-Daten]"),
             trends_insights=kwargs.get("trends_insights", "[Keine Trenddaten]"),
-            destatis_stats=kwargs.get("destatis_stats", "[Keine Marktdaten]")
+            destatis_stats=kwargs.get("destatis_stats", "[Keine Marktdaten]"),
+            keywords=", ".join(topic_keywords) if topic_keywords else "[Keine extrahierten Themen]"
         )
 
         resp = llm.invoke(prompt)
@@ -689,16 +666,13 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
         if not text:
             raise ValueError("❗ Kein Text übergeben für Topic-Extraktion.")
 
-        prompt = f"""
-Extrahiere maximal 5 relevante, aktuelle Themen oder Begriffe aus folgendem Inputtext. 
-Diese sollen sich für weitere Recherche in Google Trends, RSS-News oder DESTATIS eignen.
+        from agent.prompts import extract_topics_prompt_deep  # Sicherstellen, dass oben importiert ist
 
-Text:
-{text}
-"""
+        prompt = extract_topics_prompt_deep.format(text=text)
         resp = llm.invoke(prompt)
         result = resp.content if hasattr(resp, "content") else str(resp)
-        return {"response": result, "prompt_used": prompt}
+
+        return {"response": result.strip(), "prompt_used": prompt}
 
     elif task == "memory_write":
         check_task_requirements(task, kwargs)
