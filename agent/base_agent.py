@@ -344,6 +344,14 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
     elif task == "seo_audit":
         check_task_requirements(task, kwargs)
 
+        if not any([
+            kwargs.get("text", "").strip(),
+            kwargs.get("url", "").strip(),
+            kwargs.get("customer_id"),
+            kwargs.get("pdf_path")
+        ]):
+            raise ValueError("❗ Kein Kontext vorhanden – bitte Text, URL, Kunden-ID oder PDF angeben.")
+
         url = kwargs.get("url", "")
         zielgruppe = kwargs.get("zielgruppe", "Zielgruppe nicht angegeben")
         thema = kwargs.get("thema", "Kein Thema angegeben")
@@ -357,11 +365,13 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
             kwargs.get("customer_id"),
             kwargs.get("pdf_path")
         )
-        seo = extract_seo_signals(html)
 
         tmpl = seo_audit_prompt_deep
         prompt = tmpl.format(
             contexts_combined=ctx,
+            zielgruppe=zielgruppe,
+            thema=thema,
+            keywords=keywords,
             rss_snippets=kwargs.get("rss_snippets", "[Keine RSS-Daten]"),
             trends_insights=kwargs.get("trends_insights", "[Keine Trenddaten]"),
             destatis_stats=kwargs.get("destatis_stats", "[Keine Marktdaten]")
@@ -374,6 +384,14 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
     elif task in ["seo_optimize", "seo_optimization"]:
         check_task_requirements("seo_optimization", kwargs)
 
+        if not any([
+            kwargs.get("text", "").strip(),
+            kwargs.get("url", "").strip(),
+            kwargs.get("customer_id"),
+            kwargs.get("pdf_path")
+        ]):
+            raise ValueError("❗ Kein Kontext vorhanden – bitte Text, URL, Kunden-ID oder PDF angeben.")
+
         ctx = get_context_from_text_or_url(
             kwargs.get("text", ""),
             kwargs.get("url", ""),
@@ -383,7 +401,7 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
         tmpl = seo_optimization_prompt_deep
         prompt = tmpl.format(
             contexts_combined=ctx,
-            seo_audit_summary=kwargs.get("seo_audit_summary", "[Keine Voranalyse verfügbar]"),
+            seo_audit_summary=kwargs.get("seo_audit_summary", "[Keine SEO-Audit-Zusammenfassung]"),
             lighthouse_json=kwargs.get("lighthouse_json", "[Keine Lighthouse-Daten]"),
             zielgruppe=kwargs.get("zielgruppe", "Zielgruppe nicht angegeben"),
             ziel=kwargs.get("ziel", "Ziel nicht angegeben"),
@@ -397,6 +415,14 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
 
     elif task == "campaign_plan":
         check_task_requirements(task, kwargs)
+        if not any([
+            kwargs.get("text", "").strip(),
+            kwargs.get("url", "").strip(),
+            kwargs.get("customer_id"),
+            kwargs.get("pdf_path")
+        ]):
+            raise ValueError("❗ Kein Kontext vorhanden – bitte Text, URL, Kunden-ID oder PDF angeben.")
+
         ctx = get_context_from_text_or_url(
             kwargs.get("text", ""),
             kwargs.get("url", ""),
@@ -409,11 +435,11 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
         tmpl = campaign_plan_prompt_deep
         prompt = tmpl.format(
             context=ctx,
-            zielgruppe=zg,
-            thema=th,
-            rss_snippets=rss_snippets,
-            trends_insights=trends_insights,
-            destatis_stats=destatis_stats
+            zielgruppe=kwargs.get("zielgruppe", ""),
+            thema=kwargs.get("thema", ""),
+            rss_snippets=kwargs.get("rss_snippets", "[Keine RSS-Daten]"),
+            trends_insights=kwargs.get("trends_insights", "[Keine Trenddaten]"),
+            destatis_stats=kwargs.get("destatis_stats", "[Keine Marktdaten]")
         )
 
         resp = llm.invoke(prompt)
@@ -422,6 +448,14 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
 
     elif task == "seo_lighthouse":
         check_task_requirements(task, kwargs)
+
+        if not any([
+            kwargs.get("text", "").strip(),
+            kwargs.get("url", "").strip(),
+            kwargs.get("customer_id"),
+            kwargs.get("pdf_path")
+        ]):
+            raise ValueError("❗ Kein Kontext vorhanden – bitte Text, URL, Kunden-ID oder PDF angeben.")
 
         url = kwargs.get("url", "")
         zielgruppe = kwargs.get("zielgruppe", "")
@@ -437,7 +471,6 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
         except Exception as e:
             lighthouse_data = f"[Fehler: {e}]"
 
-        # 🧠 Kontexttext für den Prompt ergänzen (aus Text, URL oder Customer Memory)
         ctx = get_context_from_text_or_url(
             text,
             url,
@@ -447,10 +480,11 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
 
         tmpl = seo_lighthouse_prompt_deep
         prompt = tmpl.format(
-            url=url,
+            context_website=ctx,
             branche=branche,
             zielgruppe=zielgruppe,
-            text=text,
+            thema=thema,
+            url=url,
             lighthouse_reports_combined=lighthouse_data
         )
 
@@ -462,15 +496,10 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
     elif task == "landingpage_strategy":
         check_task_requirements(task, kwargs)
 
-        url = kwargs.get("url", "")
-        angebot = kwargs.get("angebot", "").strip()
-        ziel = kwargs.get("ziel", "").strip()
-        zielgruppe = kwargs.get("zielgruppe", "Zielgruppe nicht definiert").strip()
+        if not kwargs.get("url", "").strip():
+            raise ValueError("❗ Keine URL übergeben für Landingpage-Analyse.")
 
-        # Website-HTML laden
-        ctx_web = load_html(url)
-
-        # Optionaler PDF-Inhalt
+        ctx_web = load_html(kwargs["url"])
         ctx_att = ""
         pdfp = kwargs.get("pdf_path", "")
         if pdfp and os.path.exists(pdfp):
@@ -480,9 +509,9 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
         prompt = tmpl.format(
             context_website=ctx_web,
             context_anhang=ctx_att,
-            zielgruppe=zielgruppe,
-            ziel=ziel,
-            thema=angebot,
+            zielgruppe=kwargs.get("zielgruppe", "Zielgruppe nicht definiert").strip(),
+            ziel=kwargs.get("ziel", "").strip(),
+            thema=kwargs.get("angebot", "").strip(),
             rss_snippets=kwargs.get("rss_snippets", "[Keine RSS-Daten]"),
             trends_insights=kwargs.get("trends_insights", "[Keine Trenddaten]"),
             destatis_stats=kwargs.get("destatis_stats", "[Keine Destatis-Daten]"),
@@ -498,6 +527,14 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
     elif task == "tactical_actions":
         check_task_requirements(task, kwargs)
 
+        if not any([
+            kwargs.get("text", "").strip(),
+            kwargs.get("url", "").strip(),
+            kwargs.get("customer_id"),
+            kwargs.get("pdf_path")
+        ]):
+            raise ValueError("❗ Kein Kontext vorhanden – bitte Text, URL, Kunden-ID oder PDF angeben.")
+
         ctx = get_context_from_text_or_url(
             kwargs.get("text", ""),
             kwargs.get("url", ""),
@@ -508,10 +545,11 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
         tmpl = tactical_actions_prompt_deep
         prompt = tmpl.format(
             context=ctx,
-            seo_summary=kwargs.get("seo_summary", "[Kein SEO-Audit verfügbar]"),
-            zielgruppe=kwargs.get("zielgruppe", "Zielgruppe nicht definiert"),
-            themen=kwargs.get("thema", "Kein Thema angegeben"),
-            zeitraum=kwargs.get("zeitraum", "Kein Zeitraum angegeben")
+            ziel=kwargs.get("ziel", "Kein Ziel definiert"),
+            zeitfenster=kwargs.get("zeitfenster", "Unbekannter Zeitraum"),
+            rss_snippets=kwargs.get("rss_snippets", "[Keine RSS-Daten]"),
+            trends_insights=kwargs.get("trends_insights", "[Keine Trenddaten]"),
+            destatis_stats=kwargs.get("destatis_stats", "[Keine Marktdaten]")
         )
 
         resp = llm.invoke(prompt)
@@ -525,6 +563,9 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
         zielgruppe = kwargs.get("zielgruppe", "Kunden")
         text = kwargs.get("text", "")
 
+        if not url:
+            raise ValueError("❗ URL fehlt für Alt-Tag Analyse.")
+
         image_data = extract_images_from_url(url)
 
         if isinstance(image_data, list):
@@ -533,11 +574,10 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
                 if not img["src"].lower().endswith(".svg")
             ]
             limit = 40
-
             img_context_lines = []
             for idx, img in enumerate(filtered_images[:limit], 1):
                 img_context_lines.append(f"Bild {idx}: {img['src']}")
-                if img["context"]:
+                if img.get("context"):
                     img_context_lines.append(f"Kontext: {img['context']}")
             image_context = "\n".join(img_context_lines)
         else:

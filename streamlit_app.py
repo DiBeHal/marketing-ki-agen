@@ -277,13 +277,17 @@ briefing_typ = kanal = thema = zielgruppe = tonalitaet = ""
 
 if task == "Content Analyse":
     task_id = "content_analysis"
-    if not (context or url):
-        st.error("❗ Bitte Kontexttext oder URL angeben.")
+
+    text_input = (customer_memory + "\n\n" + context).strip()
+
+    if not text_input and not url.strip():
+        st.error("❗ Bitte gib mindestens Kontexttext oder URL an.")
         st.stop()
+
     params = {
         "task": task_id,
-        "text": customer_memory + "\n\n" + context,
-        "url": url,
+        "text": text_input,
+        "url": url.strip(),
         "customer_id": customer_id
     }
     if optional_pdf_path:
@@ -297,8 +301,9 @@ elif task == "Content Writing":
     if not (zielgruppe and tonalitaet and thema):
         st.error("❗ Bitte Zielgruppe, Tonalität und Thema angeben.")
         st.stop()
-    if not (text or url or context or customer_id or optional_pdf_path):
-        st.error("❗ Bitte gib mindestens Text, URL, PDF oder Kundenkontext an.")
+    combined_context = (customer_memory + "\n\n" + context).strip()
+    if not (combined_context or url.strip() or optional_pdf_path):
+        st.error("❗ Bitte gib mindestens Kontexttext, URL oder PDF an.")
         st.stop()
     params = {
         "task": task_id,
@@ -334,6 +339,11 @@ elif task == "Wettbewerbsanalyse":
     ads_themen_liste = [k.strip() for k in ads_themen_input.split(",") if k.strip()]
     unternehmen = st.text_input("🏷️ Unternehmensname (für Ad-Suche)")
 
+    combined_context = (customer_memory + "\n\n" + context).strip()
+
+    if not combined_context and not eigene_url and not optional_pdf_path:
+        st.error("❗ Kein Kontext vorhanden – bitte Text, eigene URL oder PDF angeben.")
+        st.stop()
     params = {
         "task": task_id,
         "eigene_url": eigene_url,
@@ -341,7 +351,7 @@ elif task == "Wettbewerbsanalyse":
         "wettbewerber_namen": wettbewerber_namen,
         "customer_id": customer_id,
         "ads_keywords": ads_themen_liste,
-        "text": customer_memory + "\n\n" + context,
+        "text": combined_context,
         "customer_name": unternehmen,
         "branche": st.session_state.get("branche", ""),
         "zielgruppe": st.session_state.get("zielgruppe", "")
@@ -358,10 +368,14 @@ elif task == "Wettbewerbsanalyse":
 
 elif task == "SEO Audit":
     task_id = "seo_audit"
+    combined_context = (customer_memory + "\n\n" + context).strip()
+    if not combined_context and not url.strip() and not optional_pdf_path:
+        st.error("❗ Bitte gib mindestens Text, URL oder PDF für die Analyse an.")
+        st.stop()
     params = {
         "task": task_id,
-        "url": url,
-        "text": customer_memory + "\n\n" + context,
+        "text": combined_context,
+        "url": url.strip(),
         "customer_id": customer_id
     }
     if optional_pdf_path:
@@ -369,41 +383,50 @@ elif task == "SEO Audit":
 
 elif task == "SEO Optimierung":
     task_id = "seo_optimize"
-    st.markdown("🔍 Lade optionalen Audit-Report hoch (PDF) oder ergänze Text/URL.")
 
     combined_context = (customer_memory + "\n\n" + context).strip()
-    if not combined_context and not optional_pdf_path:
-        st.error("❗ Kein Kontext vorhanden – bitte Text, URL oder PDF angeben.")
+
+    if not combined_context and not url.strip() and not optional_pdf_path:
+        st.error("❗ Bitte gib mindestens Text, URL oder PDF für die Optimierung an.")
         st.stop()
 
     params = {
         "task": task_id,
         "text": combined_context,
-        "url": url,
+        "url": url.strip(),
         "customer_id": customer_id
     }
+
     if optional_pdf_path:
         params["pdf_path"] = optional_pdf_path
 
 elif task == "Technisches SEO (Lighthouse)":
     task_id = "seo_lighthouse"
     url = st.text_input("🌐 Website-URL (Pflicht)", placeholder="https://www.beispielseite.de")
-    if not url:
-        st.error("❗ Verpflichtende URL angeben.")
+
+    if not url.strip():
+        st.error("❗ Verpflichtende URL fehlt.")
         st.stop()
+
     zielgruppe = st.text_input("👥 Zielgruppe (optional)", placeholder="z. B. Fachpublikum, Neukunden, KMU")
     thema = st.text_input("🧩 Fokus oder Thema der Website (optional)", placeholder="z. B. Performance, UX, Dienstleistung")
     branche = st.text_input("🏢 Branche oder Geschäftsbereich (optional)", placeholder="z. B. Agentur, Einzelhandel, SaaS")
 
+    combined_context = (customer_memory + "\n\n" + context).strip()
+
+    if not combined_context and not optional_pdf_path:
+        st.warning("⚠️ Hinweis: Es wurde kein zusätzlicher Kontext übergeben. Nur URL wird verwendet.")
+
     params = {
         "task": task_id,
-        "url": url,
-        "zielgruppe": zielgruppe,
-        "thema": thema,
-        "branche": branche,
-        "text": (customer_memory + "\n\n" + context).strip(),
+        "url": url.strip(),
+        "zielgruppe": zielgruppe.strip(),
+        "thema": thema.strip(),
+        "branche": branche.strip(),
+        "text": combined_context,
         "customer_id": customer_id
     }
+
     if optional_pdf_path:
         params["pdf_path"] = optional_pdf_path
 
@@ -415,8 +438,9 @@ elif task == "Kampagnenplanung":
     zeitraum = st.text_input("🕒 Zeitraum")
     zielgruppe = st.text_input("👥 Zielgruppe", placeholder="z. B. B2B Entscheider, junge Erwachsene")
 
-    if not (ziel or produkt or customer_memory.strip() or context.strip()):
-        st.error("❗ Bitte gib mindestens Ziel, Produkt oder Kontext an – sonst kein Start.")
+    combined_context = (customer_memory + "\n\n" + context).strip()
+    if not ziel.strip() and not produkt.strip() and not combined_context and not optional_pdf_path:
+        st.error("❗ Bitte gib mindestens Ziel, Produkt oder Kontext an.")
         st.stop()
 
     params = {
@@ -425,7 +449,7 @@ elif task == "Kampagnenplanung":
         "produkt": produkt.strip() or "Nicht angegeben",
         "zeitraum": zeitraum.strip() or "Nicht definiert",
         "zielgruppe": zielgruppe.strip() or "Zielgruppe nicht angegeben",
-        "text": (customer_memory + "\n\n" + context).strip(),
+        "text": combined_context,
         "customer_id": customer_id
     }
 
@@ -433,27 +457,26 @@ elif task == "Kampagnenplanung":
         params["pdf_path"] = optional_pdf_path
 
 
-
 elif task == "Landingpage Strategie":
     task_id = "landingpage_strategy"
 
-    if not url:
+    if not url.strip():
         st.error("❗ Verpflichtende URL angeben.")
         st.stop()
 
     zielgruppe = st.text_input("👥 Zielgruppe")
     angebot = st.text_input("💡 Angebot")
 
-    # Zielgruppe-Fallback robust absichern
-    zielgruppe_final = zielgruppe.strip() or "Zielgruppe noch nicht definiert"
-    angebot_final = angebot.strip() or ""
+    combined_context = (customer_memory + "\n\n" + context).strip()
+    if not combined_context and not optional_pdf_path:
+        st.warning("⚠️ Es wurde kein Kontexttext oder PDF übergeben – es wird nur die URL analysiert.")
 
     params = {
         "task": task_id,
-        "zielgruppe": zielgruppe_final,
-        "angebot": angebot_final,
+        "zielgruppe": zielgruppe.strip() or "Zielgruppe noch nicht definiert",
+        "angebot": angebot.strip() or "",
         "url": url.strip(),
-        "text": (customer_memory + "\n\n" + context).strip(),
+        "text": combined_context,
         "customer_id": customer_id
     }
 
@@ -463,35 +486,15 @@ elif task == "Landingpage Strategie":
     # Extra-Sicherung: sicherstellen, dass Feld existiert
     params["zielgruppe"] = params.get("zielgruppe", "Zielgruppe noch nicht definiert").strip()
 
-elif task == "Monatsreport":
-    task_id = "monthly_report"
-    monat = st.text_input("📆 Monat (z. B. 2024-07)")
-    import re
-    if monat and not re.match(r"^\d{4}-\d{2}$", monat):
-        st.error("❗ Bitte gib das Monat-Format korrekt an (z. B. 2024-07).")
-        st.stop()
-    combined_context = (customer_memory + "\n\n" + context).strip()
-    if not combined_context:
-        st.error("❗ Bitte gib Text, URL oder Kundenkontext an – der Monatsreport benötigt Inhalt.")
-        st.stop()
-    params = {
-        "task": task_id,
-        "monat": monat,
-        "text": customer_memory + "\n\n" + context,
-        "customer_id": customer_id
-    }
-    if optional_pdf_path:
-        params["pdf_path"] = optional_pdf_path
-
 elif task == "Marketingmaßnahmen planen":
     task_id = "tactical_actions"
-    ziel = st.text_input("🎯 Ziel der Maßnahmen")
-    zeitfenster = st.text_input("🗓️ Zeitraum")
+    ziel = st.text_input("Ziel der Maßnahmen")
+    zeitfenster = st.text_input("Zeitraum")
 
     combined_context = (customer_memory + "\n\n" + context).strip()
 
     # Benutzerwarnung, wenn alles leer
-    if not ziel and not zeitfenster and not combined_context and not customer_id:
+    if not ziel.strip() and not zeitfenster.strip() and not combined_context and not optional_pdf_path:
         st.error("❗ Bitte gib mindestens Ziel, Zeitraum oder Kontext an.")
         st.stop()
 
@@ -520,16 +523,18 @@ elif task == "Alt-Tag Generator":
     branche = st.text_input("🏢 Branche / Produktfeld (optional)", placeholder="z. B. Kosmetikstudio, Bäckerei, Anwaltskanzlei")
     kontexttext = st.text_area("📄 Optionaler Kontexttext oder Beschreibung", height=150)
 
-    if not url:
+    if not url.strip():
         st.error("❗ Bitte gib eine gültige Website-URL an.")
         st.stop()
 
+    combined_context = (customer_memory + "\n\n" + kontexttext).strip()
+
     params = {
         "task": task_id,
-        "url": url,
-        "zielgruppe": zielgruppe,
-        "branche": branche,
-        "text": customer_memory + "\n\n" + kontexttext,
+        "url": url.strip(),
+        "zielgruppe": zielgruppe.strip(),
+        "branche": branche.strip(),
+        "text": combined_context,
         "customer_id": customer_id
     }
 
