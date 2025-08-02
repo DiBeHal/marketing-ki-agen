@@ -299,7 +299,7 @@ if task == "Content Analyse":
                 st.warning(f"⚠️ Themen-Extraktion fehlgeschlagen: {e}")
                 topic_keywords = []
             else:
-            topic_keywords = []
+                topic_keywords = []
 
         params["topic_keywords"] = topic_keywords
 
