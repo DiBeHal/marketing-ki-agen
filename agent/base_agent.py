@@ -14,12 +14,14 @@ import requests
 from pytrends.request import TrendReq
 from langchain_openai import ChatOpenAI
 
+from agent.tools.context_utils import get_context_from_text_or_url
+
 def has_any(*args):
     return any(arg and str(arg).strip() for arg in args)
 
 def check_task_requirements(task: str, kwargs: dict):
     requirements = TASK_REQUIREMENTS.get(task, {})
-    
+
     for key, rule in requirements.items():
         if rule == "required" and not kwargs.get(key):
             raise ValueError(f"Task '{task}' benötigt zwingend: {key}")
@@ -86,6 +88,9 @@ from agent.tools.ads_scraper import scrape_facebook_ads, scrape_google_ads, scra
 from agent.tools.alt_tag_helper import extract_images_from_url
 from agent.tools.google_search import find_competitor_sites
 from agent.tools.memory_store import save_to_memory, search_memory
+from agent.tools.scraper import scrape_html, extract_image_sources
+from agent.tools.parser import extract_text_blocks
+
 
 # ===== LangChain LLM mit Token-Limit =====
 llm = ChatOpenAI(model="gpt-4o", max_tokens=3000)
@@ -101,37 +106,19 @@ def search_google(brand_or_domain: str) -> List[str]:
         f"https://news.google.com/search?q={brand}"
     ]
 
-def get_context_from_text_or_url(text: str, url: str, customer_id: Optional[str] = None, pdf_path: Optional[str] = None) -> str:
-    """
-    Liefert den sinnvollsten Kontext für den Prompt zurück – inklusive optionalem PDF-Inhalt.
-    """
-    text = text.strip() if text else ""
-    url = url.strip() if url else ""
+from agent.tools.scraper import scrape_html
+from agent.tools.parser import extract_text_blocks
 
-    parts = []
+def load_html(path_or_url):
+    if not path_or_url.startswith("http"):
+        path_or_url = "https://" + path_or_url
 
-    if customer_id:
-        memory = load_customer_memory(customer_id)
-        if memory:
-            parts.append(memory)
-
-    if text:
-        parts.append(text)
-
-    if url:
-        try:
-            html = load_html(url)
-            parts.append(html)
-        except Exception as e:
-            parts.append(f"[Fehler beim Laden der URL {url}: {e}]")
-
-    if pdf_path and os.path.exists(pdf_path):
-        parts.append("\n[PDF-Inhalt]\n" + load_pdf(pdf_path))
-
-    if not parts:
-        raise ValueError("Kein verwertbarer Inhalt vorhanden (Text, URL, PDF oder Kunden-Memory).")
-
-    return "\n\n".join(parts)
+    try:
+        html = scrape_html(path_or_url)
+        text_blocks = extract_text_blocks(html)
+        return "\n".join(text_blocks)
+    except Exception as e:
+        raise ValueError(f"Fehler beim Abrufen oder Parsen der URL {path_or_url}: {e}")
 
 def fetch_rss_snippets(feeds: List[str], limit: int = 3) -> str:
     snippets = []
@@ -228,12 +215,22 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
         zielgruppe = kwargs.get("zielgruppe", "Zielgruppe nicht angegeben")
         thema = kwargs.get("thema", "Kein Thema angegeben")
 
-        ctx = get_context_from_text_or_url(
-            kwargs.get("text", ""),
-            kwargs.get("url", ""),
-            kwargs.get("customer_id"),
-            kwargs.get("pdf_path")
-        )
+        ctx = ""
+        if kwargs.get("text", "").strip():
+            ctx = kwargs["text"]
+        elif kwargs.get("url", ""):
+            try:
+                html = scrape_html(kwargs["url"])
+                ctx = "\n".join(extract_text_blocks(html))
+            except Exception as e:
+                ctx = f"[Fehler beim Laden und Parsen von URL: {e}]"
+
+        if not ctx and kwargs.get("customer_id"):
+            ctx = load_customer_memory(kwargs["customer_id"])
+
+        if not ctx and kwargs.get("pdf_path") and os.path.exists(kwargs["pdf_path"]):
+            ctx = load_pdf(kwargs["pdf_path"])
+
 
         tmpl = content_analysis_prompt_deep
         prompt = tmpl.format(
@@ -277,12 +274,21 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
         check_task_requirements(task, kwargs)
 
         # Kontext des Kunden
-        ctx_k = get_context_from_text_or_url(
-            kwargs.get("text", ""),
-            kwargs.get("eigene_url", ""),
-            kwargs.get("customer_id"),
-            kwargs.get("pdf_path")
-        )
+        ctx = ""
+        if kwargs.get("text", "").strip():
+            ctx = kwargs["text"]
+        elif kwargs.get("url", ""):
+            try:
+                html = scrape_html(kwargs["url"])
+                ctx = "\n".join(extract_text_blocks(html))
+            except Exception as e:
+                ctx = f"[Fehler beim Laden und Parsen von URL: {e}]"
+
+        if not ctx and kwargs.get("customer_id"):
+            ctx = load_customer_memory(kwargs["customer_id"])
+
+        if not ctx and kwargs.get("pdf_path") and os.path.exists(kwargs["pdf_path"]):
+            ctx = load_pdf(kwargs["pdf_path"])
 
         # Mitbewerber-Kontexte (aus URLs oder Namen)
         mitbewerber_urls = kwargs.get("wettbewerber_urls", [])
@@ -367,12 +373,23 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
         if isinstance(keywords, list):
             keywords = ", ".join(keywords)
 
-        ctx = get_context_from_text_or_url(
-            kwargs.get("text", ""),
-            url,
-            kwargs.get("customer_id"),
-            kwargs.get("pdf_path")
-        )
+        ctx = ""
+        if kwargs.get("text", "").strip():
+            ctx = kwargs["text"]
+        elif url:
+            try:
+                html = scrape_html(url)
+                ctx = "\n".join(extract_text_blocks(html))
+            except Exception as e:
+                ctx = f"[Fehler beim Laden und Parsen von URL: {e}]"
+
+            ctx = load_customer_memory(kwargs["customer_id"])
+
+        if not ctx and kwargs.get("customer_id"):
+            ctx = load_customer_memory(kwargs["customer_id"])
+
+        if not ctx and kwargs.get("pdf_path") and os.path.exists(kwargs["pdf_path"]):
+            ctx = load_pdf(kwargs["pdf_path"])
 
         tmpl = seo_audit_prompt_deep
         prompt = tmpl.format(
@@ -400,12 +417,22 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
         ]):
             raise ValueError("❗ Kein Kontext vorhanden – bitte Text, URL, Kunden-ID oder PDF angeben.")
 
-        ctx = get_context_from_text_or_url(
-            kwargs.get("text", ""),
-            kwargs.get("url", ""),
-            kwargs.get("customer_id"),
-            kwargs.get("pdf_path")
-        )
+        ctx = ""
+        if kwargs.get("text", "").strip():
+            ctx = kwargs["text"]
+        elif kwargs.get("url", ""):
+            try:
+                html = scrape_html(kwargs["url"])
+                ctx = "\n".join(extract_text_blocks(html))
+            except Exception as e:
+                ctx = f"[Fehler beim Laden und Parsen von URL: {e}]"
+
+        if not ctx and kwargs.get("customer_id"):
+            ctx = load_customer_memory(kwargs["customer_id"])
+
+        if not ctx and kwargs.get("pdf_path") and os.path.exists(kwargs["pdf_path"]):
+            ctx = load_pdf(kwargs["pdf_path"])
+
         tmpl = seo_optimization_prompt_deep
         prompt = tmpl.format(
             contexts_combined=ctx,
@@ -431,12 +458,23 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
         ]):
             raise ValueError("❗ Kein Kontext vorhanden – bitte Text, URL, Kunden-ID oder PDF angeben.")
 
-        ctx = get_context_from_text_or_url(
-            kwargs.get("text", ""),
-            kwargs.get("url", ""),
-            kwargs.get("customer_id"),
-            kwargs.get("pdf_path")
-        )
+        ctx = ""
+        if kwargs.get("text", "").strip():
+            ctx = kwargs["text"]
+        elif kwargs.get("url", ""):
+            try:
+                html = scrape_html(kwargs["url"])
+                ctx = "\n".join(extract_text_blocks(html))
+            except Exception as e:
+                ctx = f"[Fehler beim Laden und Parsen von URL: {e}]"
+
+        if not ctx and kwargs.get("customer_id"):
+            ctx = load_customer_memory(kwargs["customer_id"])
+
+        if not ctx and kwargs.get("pdf_path") and os.path.exists(kwargs["pdf_path"]):
+            ctx = load_pdf(kwargs["pdf_path"])
+
+
         zg = kwargs.get("zielgruppe", "")
         th = kwargs.get("thema", "")
 
@@ -479,12 +517,21 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
         except Exception as e:
             lighthouse_data = f"[Fehler: {e}]"
 
-        ctx = get_context_from_text_or_url(
-            text,
-            url,
-            kwargs.get("customer_id"),
-            kwargs.get("pdf_path")
-        )
+        ctx = ""
+        if text.strip():
+            ctx = text
+        elif url:
+            try:
+                html = scrape_html(url)
+                ctx = "\n".join(extract_text_blocks(html))
+            except Exception as e:
+                ctx = f"[Fehler beim Laden und Parsen von URL: {e}]"
+
+        if not ctx and kwargs.get("customer_id"):
+            ctx = load_customer_memory(kwargs["customer_id"])
+
+        if not ctx and kwargs.get("pdf_path") and os.path.exists(kwargs["pdf_path"]):
+            ctx = load_pdf(kwargs["pdf_path"])
 
         tmpl = seo_lighthouse_prompt_deep
         prompt = tmpl.format(
@@ -507,7 +554,12 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
         if not kwargs.get("url", "").strip():
             raise ValueError("❗ Keine URL übergeben für Landingpage-Analyse.")
 
-        ctx_web = load_html(kwargs["url"])
+        try:
+            html = scrape_html(kwargs["url"])
+            ctx_web = "\n".join(extract_text_blocks(html))
+        except Exception as e:
+            ctx_web = f"[Fehler beim Laden und Parsen von URL: {e}]"
+
         ctx_att = ""
         pdfp = kwargs.get("pdf_path", "")
         if pdfp and os.path.exists(pdfp):
@@ -543,12 +595,21 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
         ]):
             raise ValueError("❗ Kein Kontext vorhanden – bitte Text, URL, Kunden-ID oder PDF angeben.")
 
-        ctx = get_context_from_text_or_url(
-            kwargs.get("text", ""),
-            kwargs.get("url", ""),
-            kwargs.get("customer_id"),
-            kwargs.get("pdf_path")
-        )
+        ctx = ""
+        if kwargs.get("text", "").strip():
+            ctx = kwargs["text"]
+        elif kwargs.get("url", ""):
+            try:
+                html = scrape_html(kwargs["url"])
+                ctx = "\n".join(extract_text_blocks(html))
+            except Exception as e:
+                ctx = f"[Fehler beim Laden und Parsen von URL: {e}]"
+
+        if not ctx and kwargs.get("customer_id"):
+            ctx = load_customer_memory(kwargs["customer_id"])
+
+        if not ctx and kwargs.get("pdf_path") and os.path.exists(kwargs["pdf_path"]):
+            ctx = load_pdf(kwargs["pdf_path"])
 
         tmpl = tactical_actions_prompt_deep
         prompt = tmpl.format(
@@ -570,9 +631,12 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
         branche = kwargs.get("branche", "Allgemein")
         zielgruppe = kwargs.get("zielgruppe", "Kunden")
         text = kwargs.get("text", "")
-
-        if not url:
-            raise ValueError("❗ URL fehlt für Alt-Tag Analyse.")
+        if not text and url:
+            try:
+                html = scrape_html(url)
+                text = "\n".join(extract_text_blocks(html))
+            except Exception as e:
+                text = f"[Fehler beim Extrahieren von Text aus URL: {e}]"
 
         image_data = extract_images_from_url(url)
 
