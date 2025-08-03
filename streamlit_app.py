@@ -454,6 +454,7 @@ elif task == "Kampagnenplanung":
     produkt = st.text_input("📦 Produkt/Dienstleistung")
     zeitraum = st.text_input("🕒 Zeitraum")
     zielgruppe = st.text_input("👥 Zielgruppe", placeholder="z. B. B2B Entscheider, junge Erwachsene")
+    thema = st.text_input("🧩 Thema der Kampagne", placeholder="z. B. Automatisierung, neue Produktlinie")
 
     combined_context = (customer_memory + "\n\n" + context).strip()
     if not ziel.strip() and not produkt.strip() and not combined_context and not optional_pdf_path:
@@ -466,6 +467,7 @@ elif task == "Kampagnenplanung":
         "produkt": produkt.strip() or "Nicht angegeben",
         "zeitraum": zeitraum.strip() or "Nicht definiert",
         "zielgruppe": zielgruppe.strip() or "Zielgruppe nicht angegeben",
+        "thema": thema.strip() or "Thema nicht angegeben",
         "text": combined_context,
         "customer_id": customer_id
     }

@@ -173,8 +173,10 @@ Erstelle eine vollständige Kampagnenstrategie auf Basis der angegebenen Paramet
 3. Kontext:
 Die Kampagne basiert auf folgendem Input:
 
+- Kampagnenziel: {ziel}
+- Produkt / Dienstleistung: {produkt}
 - Zielgruppe: {zielgruppe}
-- Tonalität: {tonalitaet}
+- Zeitraum: {zeitraum}
 - Thema: {thema}
 - Kontext (Text/Website-Auszug): {context}
 
@@ -313,7 +315,7 @@ Zusätzliche Informationen (optional):
 Bitte liefere ausschließlich klare, fokussierte und wirksam begründete Vorschläge – keine allgemeinen UX- oder Marketing-Floskeln.
 """
 
-# ===== Cluster 6: SEO Inhalte =====
+# ===== Cluster 6: SEO Audit =====
 seo_audit_prompt_deep = """
 1. Rolle:
 Du bist ein erfahrener SEO-Consultant mit Spezialisierung auf strukturierte Content-Audits, semantische SEO-Architektur und moderne Optimierungsformate für Search Engines und Large Language Models (AIO, GEO, AEO). Du analysierst Inhalt, Struktur, Keywords und Nutzerführung aus strategischer sowie operativer Sicht.
@@ -324,12 +326,14 @@ Führe ein präzises SEO-Audit auf Grundlage der bereitgestellten Inhalte durch.
 3. Kontext:
 
 - Titel der Seite: "{title}"  
-- Meta-Description: "{description}"  
-- H1 bis H3: {headlines}  
-- Text-Inhalt: {text}  
+- Meta-Description: "{meta_description}"  
+- H1 bis H3: {headings}  
+- Text-Inhalt: {contexts_combined}  
 - Zielgruppe: {zielgruppe}  
 - Thema: {thema}  
-- Wichtige Keywords: {keywords}
+- Wichtige Keywords: {keywords}  
+- Anzahl interner Links: {num_links}  
+- Anzahl Call-to-Actions (Links): {cta_links}
 
 4. Output Format:
 
@@ -379,6 +383,7 @@ Du bist ein erfahrener SEO-Texter mit Fokus auf strategischer Inhaltsoptimierung
 Optimiere den Text auf der angegebenen Seite ganzheitlich: Fokus auf Keyword-Abdeckung, bessere Gliederung mit H-Tags, klarere CTAs, sichtbare Meta-Elemente und Nutzerführung mit Scroll-Logik. Berücksichtige relevante Hinweise aus SEO-Audit, Lighthouse-Report, Markttrends und Content-Kontext. Der optimierte Text muss direkt einsatzfähig, gegliedert und realistisch platzierbar sein – z. B. in einem CMS.
 
 3. Kontext:
+- Ziel-URL: {focus_url}
 - Zielseite (Rohtext oder HTML): {contexts_combined}  
 - SEO-Audit-Zusammenfassung: {seo_audit_summary}  
 - Lighthouse-Report: {lighthouse_json}  
@@ -452,8 +457,14 @@ Analysiere Lighthouse-Reports im SEO-Kontext und interpretiere die SEO-relevante
 
 3. Input:
 
-- Lighthouse-Daten: {lighthouse_reports_combined}  
 - Kontext: {context}
+- Website-URL: {url}
+- Branche: {branche}
+- Zielgruppe: {zielgruppe}
+- Thema / Fokus: {thema}
+- Website-Kontext (HTML-Inhalte, PDF oder Memory): {context_website}
+- Lighthouse-Report (SEO-Kategorie): {lighthouse_reports_combined}
+
 
 4. Ziel:
 
@@ -526,9 +537,6 @@ Analysiere die übergebenen Inputs und entwickle konkrete, priorisierte Taktiken
 3. Eingaben:
 
 - SEO-Audit-Zusammenfassung: {seo_summary}  
-- Lighthouse-Report: {lighthouse_json}  
-- Wettbewerbsanalyse: {competitor_summary}  
-- Kampagnenplan: {campaign_plan}  
 - Branchentrends: {rss_snippets}  
 - Trend-Insights: {trends_insights}  
 - Markt-Daten: {destatis_stats}  

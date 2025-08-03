@@ -251,6 +251,10 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
         zielgruppe = kwargs.get("zielgruppe", "Zielgruppe nicht angegeben").strip()
         tonalitaet = kwargs.get("tonalitaet", "Neutral").strip()
         thema = kwargs.get("thema", "Kein Thema angegeben").strip()
+        rss_snippets = kwargs.get("rss_snippets", "[Keine RSS-Daten]")
+        trends_insights = kwargs.get("trends_insights", "[Keine Trenddaten]")
+        destatis_stats = kwargs.get("destatis_stats", "[Keine Marktdaten]")
+
 
         ctx = get_context_from_text_or_url(
             kwargs.get("text", ""),
@@ -265,7 +269,10 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
             context=ctx,
             zielgruppe=zielgruppe,
             tonalitaet=tonalitaet,
-            thema=thema
+            thema=thema,
+            rss_snippets=rss_snippets,
+            trends_insights=trends_insights,
+            destatis_stats=destatis_stats
         )
         resp = llm.invoke(prompt)
         result = resp.content if hasattr(resp, "content") else str(resp)
@@ -398,6 +405,7 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
 
     elif task in ["seo_optimize", "seo_optimization"]:
         check_task_requirements("seo_optimization", kwargs)
+        focus_url = kwargs.get("url", "")
 
         try:
             ctx = get_context_from_text_or_url(
@@ -412,6 +420,7 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
         tmpl = seo_optimization_prompt_deep
         prompt = tmpl.format(
             contexts_combined=ctx,
+            focus_url=focus_url,
             seo_audit_summary=kwargs.get("seo_audit_summary", "[Keine SEO-Audit-Zusammenfassung]"),
             lighthouse_json=kwargs.get("lighthouse_json", "[Keine Lighthouse-Daten]"),
             zielgruppe=kwargs.get("zielgruppe", "Zielgruppe nicht angegeben"),
@@ -476,8 +485,8 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
         check_task_requirements(task, kwargs)
 
         url = kwargs.get("url", "")
-        zielgruppe = kwargs.get("zielgruppe", "")
-        thema = kwargs.get("thema", "")
+        zielgruppe = kwargs.get("zielgruppe", "Zielgruppe nicht angegeben")
+        thema = kwargs.get("thema", "Kein Thema angegeben")
         branche = kwargs.get("branche", "Allgemein")
 
         # Kontextbeschaffung
@@ -503,7 +512,7 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
         # Prompt
         tmpl = seo_lighthouse_prompt_deep
         prompt = tmpl.format(
-            context_website=ctx,
+            context=ctx,
             branche=branche,
             zielgruppe=zielgruppe,
             thema=thema,
