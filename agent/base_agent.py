@@ -595,7 +595,8 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
             rss_snippets=kwargs.get("rss_snippets", "[Keine RSS-Daten]"),
             trends_insights=kwargs.get("trends_insights", "[Keine Trenddaten]"),
             destatis_stats=kwargs.get("destatis_stats", "[Keine Marktdaten]"),
-            keywords=", ".join(topic_keywords) if topic_keywords else "[Keine extrahierten Themen]"
+            keywords=", ".join(topic_keywords) if topic_keywords else "[Keine extrahierten Themen]",
+            seo_summary=kwargs.get("seo_summary", "[Keine SEO-Zusammenfassung]")
         )
 
         resp = llm.invoke(prompt)
