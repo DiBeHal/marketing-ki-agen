@@ -315,6 +315,8 @@ elif task == "Content Writing":
     zielgruppe = st.text_input("👥 Zielgruppe")
     tonalitaet = st.text_input("🎙️ Tonalität")
     thema = st.text_input("📝 Thema")
+    format_laenge = st.text_input("🧾 Format & Länge (optional)", placeholder="z. B. Blogartikel, 500 Wörter")
+
     if not (zielgruppe and tonalitaet and thema):
         st.error("❗ Bitte Zielgruppe, Tonalität und Thema angeben.")
         st.stop()
@@ -327,6 +329,7 @@ elif task == "Content Writing":
         "zielgruppe": zielgruppe,
         "tonalitaet": tonalitaet,
         "thema": thema,
+        "format_laenge": format_laenge.strip() or "",
         "text": customer_memory + "\n\n" + context,
         "customer_id": customer_id
     }

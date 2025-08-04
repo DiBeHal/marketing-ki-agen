@@ -254,6 +254,7 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
         rss_snippets = kwargs.get("rss_snippets", "[Keine RSS-Daten]")
         trends_insights = kwargs.get("trends_insights", "[Keine Trenddaten]")
         destatis_stats = kwargs.get("destatis_stats", "[Keine Marktdaten]")
+        format_laenge = kwargs.get("format_laenge", "")
 
 
         ctx = get_context_from_text_or_url(
@@ -270,6 +271,7 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
             zielgruppe=zielgruppe,
             tonalitaet=tonalitaet,
             thema=thema,
+            format_laenge=format_laenge,
             rss_snippets=rss_snippets,
             trends_insights=trends_insights,
             destatis_stats=destatis_stats
@@ -439,6 +441,9 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
 
     elif task == "campaign_plan":
         check_task_requirements(task, kwargs)
+        produkt = kwargs.get("produkt", "Nicht angegeben")
+        zeitraum = kwargs.get("zeitraum", "Nicht definiert")
+
         if not any([
             kwargs.get("text", "").strip(),
             kwargs.get("url", "").strip(),
@@ -472,6 +477,9 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
             context=ctx,
             zielgruppe=kwargs.get("zielgruppe", ""),
             thema=kwargs.get("thema", ""),
+            ziel=kwargs.get("ziel", "Nicht angegeben"),
+            produkt=produkt,
+            zeitraum=zeitraum,
             rss_snippets=kwargs.get("rss_snippets", "[Keine RSS-Daten]"),
             trends_insights=kwargs.get("trends_insights", "[Keine Trenddaten]"),
             destatis_stats=kwargs.get("destatis_stats", "[Keine Marktdaten]")

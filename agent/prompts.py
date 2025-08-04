@@ -68,6 +68,7 @@ Der Text basiert auf einem spezifischen Thema und richtet sich an eine definiert
 - Zielgruppe: {zielgruppe}  
 - Tonalität: {tonalitaet}  
 - Thema: {thema}  
+- Format & Länge: {format_laenge}
 - Optionaler Kontext (Text, Website-Auszug oder Kombination): {context}
 
 Zusätzliche Informationen (optional):
