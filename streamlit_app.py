@@ -422,11 +422,13 @@ elif task == "SEO Optimierung":
 
 elif task == "Technisches SEO (Lighthouse)":
     task_id = "seo_lighthouse"
-    url = st.text_input("🌐 Website-URL (Pflicht)", placeholder="https://www.beispielseite.de")
+    urls_input = st.text_area("🔗 URLs zur Analyse (eine pro Zeile)")
+    urls = [u.strip() for u in urls_input.splitlines() if u.strip()]
 
-    if not url.strip():
-        st.error("❗ Verpflichtende URL fehlt.")
+    if not urls:
+        st.error("❗ Bitte mindestens eine URL angeben.")
         st.stop()
+
 
     zielgruppe = st.text_input("👥 Zielgruppe (optional)", placeholder="z. B. Fachpublikum, Neukunden, KMU")
     thema = st.text_input("🧩 Fokus oder Thema der Website (optional)", placeholder="z. B. Performance, UX, Dienstleistung")
@@ -438,8 +440,8 @@ elif task == "Technisches SEO (Lighthouse)":
         st.warning("⚠️ Hinweis: Es wurde kein zusätzlicher Kontext übergeben. Nur URL wird verwendet.")
 
     params = {
-        "task": task_id,
-        "url": url.strip(),
+        "task": "seo_lighthouse",
+        "urls": urls,
         "zielgruppe": zielgruppe.strip(),
         "thema": thema.strip(),
         "branche": branche.strip(),

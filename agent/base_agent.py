@@ -492,39 +492,63 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
     elif task == "seo_lighthouse":
         check_task_requirements(task, kwargs)
 
-        url = kwargs.get("url", "")
         zielgruppe = kwargs.get("zielgruppe", "Zielgruppe nicht angegeben")
         thema = kwargs.get("thema", "Kein Thema angegeben")
         branche = kwargs.get("branche", "Allgemein")
+        context_text = kwargs.get("text", "").strip()
+        urls = kwargs.get("urls", [])
+        customer_id = kwargs.get("customer_id")
+        pdf_path = kwargs.get("pdf_path")
 
-        # Kontextbeschaffung
-        try:
-            ctx = get_context_from_text_or_url(
-                kwargs.get("text", ""),
-                url,
-                kwargs.get("customer_id"),
-                kwargs.get("pdf_path")
-            )
-        except Exception as e:
-            ctx = f"[Fehler beim Laden des Kontexts: {e}]"
+        if not urls:
+            raise ValueError("❗ Bitte mindestens eine URL angeben.")
 
-        # Lighthouse-Daten sammeln
-        lighthouse_data = "(Keine Lighthouse-Daten verfügbar)"
-        try:
-            raw_lh = run_lighthouse(url)
-            if isinstance(raw_lh, dict):
-                lighthouse_data = json.dumps(raw_lh.get("categories", {}).get("seo", {}), indent=2)
-        except Exception as e:
-            lighthouse_data = f"[Fehler bei Lighthouse-Analyse: {e}]"
+        analyses = []
 
+        for url in urls:
+            # Kontext pro Seite
+            try:
+                ctx = get_context_from_text_or_url(context_text, url, customer_id, pdf_path)
+            except Exception as e:
+                ctx = f"[Fehler beim Laden des Kontexts: {e}]"
+
+
+            # Lighthouse-Daten sammeln
+            lighthouse_data = "(Keine Lighthouse-Daten verfügbar)"
+            try:
+                raw_lh = run_lighthouse(url)
+                if isinstance(raw_lh, dict):
+                    lighthouse_data = json.dumps(raw_lh.get("categories", {}).get("seo", {}), indent=2)
+            except Exception as e:
+                lighthouse_data = f"[Fehler bei Lighthouse-Analyse: {e}]"
+
+            analyses.append({
+                "url": url,
+                "context_website": ctx,
+                "lighthouse": lighthouse_data
+            })
+
+        # Prompt-Vorbereitung
+        combined_blocks = []
+        for a in analyses:
+            combined_blocks.append(f"""=== {a['url']} ===
+
+    Website-Kontext:
+    {a['context_website']}
+
+    Lighthouse-Report:
+    {a['lighthouse']}""")
+
+        combined_input = "\n\n".join(combined_blocks)
         # Prompt
         tmpl = seo_lighthouse_prompt_deep
         prompt = tmpl.format(
-            context=ctx,
+            context=context_text,
+            context_website=combined_input,
             branche=branche,
             zielgruppe=zielgruppe,
             thema=thema,
-            url=url,
+            url="Mehrere URLs",
             lighthouse_reports_combined=lighthouse_data
         )
 
@@ -552,8 +576,8 @@ def run_agent(task: str, conversation_id: Optional[str] = None,
 
         tmpl = landingpage_strategy_contextual_prompt_deep
         prompt = tmpl.format(
-            context_website=ctx_web,
-            context_anhang=ctx_att,
+            context=context_text,
+            context_website=combined_input,
             zielgruppe=kwargs.get("zielgruppe", "Zielgruppe nicht definiert").strip(),
             ziel=kwargs.get("ziel", "").strip(),
             thema=kwargs.get("angebot", "").strip(),
