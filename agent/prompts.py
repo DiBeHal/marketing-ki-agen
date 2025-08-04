@@ -482,7 +482,7 @@ Analysiere die folgenden Lighthouse-Daten und Website-Kontexte im SEO-Kontext. G
 
 6. Output Format (pro Seite):
 
-=== {URL} ===
+=== SEITENANALYSE ===
 
 - SEO-Score: XX/100  
   - z. B. „76/100 – solide, aber Optimierung bei strukturierten Daten nötig“
