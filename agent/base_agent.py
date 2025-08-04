@@ -37,7 +37,7 @@ TASK_REQUIREMENTS = {
         "text|url|customer_id": "any_of"
     },
     "seo_lighthouse": {
-        "url": "required"
+        "urls": "required"
     },
     "content_analysis": {
         "text|url|customer_id": "any_of"
