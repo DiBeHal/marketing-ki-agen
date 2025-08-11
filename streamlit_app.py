@@ -25,7 +25,7 @@ from agent.customer_memory import (
 )
 from agent.loader import load_pdf
 from agent.activity_log import (
-    load_events_as_dataframe,
+    get_events,
     log_event,
 )
 from agent.base_agent import run_agent
@@ -83,7 +83,7 @@ page = st.sidebar.selectbox("Ansicht wählen:", ["🎯 User-Tasks", "⚙️ Admi
 if page == "⚙️ Admin-Dashboard":
     st.title("⚙️ Admin-Dashboard")
     try:
-        df = load_events_as_dataframe()
+        df = pd.DataFrame(get_events())
     except Exception:
         df = pd.DataFrame(columns=["type","timestamp","customer_id","task","rating","comment","mode","input_tokens","output_tokens"]) 
 
