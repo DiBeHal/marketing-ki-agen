@@ -1,10 +1,14 @@
 # agent/tools/ads_runner.py
 
 import os
-from typing import List
-
 import requests
 from bs4 import BeautifulSoup
+import logging
+
+logging.basicConfig(level=logging.INFO)
+
+HEADERS = {"User-Agent": "Mozilla/5.0"}
+TIMEOUT = 10
 
 
 def fetch_linkedin_ads(company_domain: str, limit: int = 3) -> str:
@@ -14,18 +18,21 @@ def fetch_linkedin_ads(company_domain: str, limit: int = 3) -> str:
     Hinweis: Für eine zuverlässige Lösung empfiehlt sich Playwright/Selenium.
     """
     url = f"https://www.linkedin.com/company/{company_domain}/posts/?feedView=all"
-    headers = {"User-Agent": "Mozilla/5.0"}
     try:
-        r = requests.get(url, headers=headers, timeout=10)
+        r = requests.get(url, headers=HEADERS, timeout=TIMEOUT)
         r.raise_for_status()
         soup = BeautifulSoup(r.text, "html.parser")
-        snippets = []
         posts = soup.select(".feed-shared-text__text-view")[:limit]
+
+        snippets = []
         for post in posts:
             text = post.get_text(strip=True)
-            snippets.append(f"- {text[:200]}{'...' if len(text) > 200 else ''}")
+            if text:
+                snippets.append(f"- {text[:200]}{'...' if len(text) > 200 else ''}")
+
         return "\n".join(snippets)
-    except Exception:
+    except Exception as e:
+        logging.warning(f"Fehler beim Abrufen von LinkedIn-Posts: {e}")
         return ""
 
 
@@ -35,21 +42,22 @@ def fetch_google_ads(company_name: str, limit: int = 3) -> str:
     extrahiert per Scraping die Ad-Snippets (Platzhalter-Implementierung).
     Für robuste Lösungen empfiehlt sich ein Headless-Browser.
     """
-    # Beispiel-URL (evtl. dynamisch nachladen, deshalb oft JS-basiert)
     url = f"https://transparencyreport.google.com/political-ads/home?searchTerm={company_name}"
-    headers = {"User-Agent": "Mozilla/5.0"}
     try:
-        r = requests.get(url, headers=headers, timeout=10)
+        r = requests.get(url, headers=HEADERS, timeout=TIMEOUT)
         r.raise_for_status()
         soup = BeautifulSoup(r.text, "html.parser")
-        snippets = []
-        # Platzhalter-Selektor, je nach Page-Structure anpassen
         items = soup.select(".ad-card")[:limit]
+
+        snippets = []
         for item in items:
             text = item.get_text(strip=True)
-            snippets.append(f"- {text[:200]}{'...' if len(text) > 200 else ''}")
+            if text:
+                snippets.append(f"- {text[:200]}{'...' if len(text) > 200 else ''}")
+
         return "\n".join(snippets)
-    except Exception:
+    except Exception as e:
+        logging.warning(f"Fehler beim Abrufen von Google Ads: {e}")
         return ""
 
 
@@ -60,7 +68,9 @@ def fetch_facebook_ads(page_id: str, limit: int = 3) -> str:
     """
     token = os.getenv("FACEBOOK_ACCESS_TOKEN")
     if not token:
+        logging.warning("Kein Facebook Access Token gefunden.")
         return ""
+
     endpoint = "https://graph.facebook.com/v12.0/ads_archive"
     params = {
         "access_token": token,
@@ -69,15 +79,19 @@ def fetch_facebook_ads(page_id: str, limit: int = 3) -> str:
         "limit": limit,
         "fields": "ad_creative_body"
     }
+
     try:
-        r = requests.get(endpoint, params=params, timeout=10)
+        r = requests.get(endpoint, params=params, timeout=TIMEOUT)
         r.raise_for_status()
         data = r.json().get("data", [])
+
         snippets = []
         for ad in data[:limit]:
             body = ad.get("ad_creative_body")
             if body:
                 snippets.append(f"- {body}")
+
         return "\n".join(snippets)
-    except Exception:
+    except Exception as e:
+        logging.warning(f"Fehler beim Abrufen von Facebook Ads: {e}")
         return ""

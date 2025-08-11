@@ -81,7 +81,7 @@ Bitte liefere die Antwort in dieser strukturierten Form:
 
 - Zielgruppenprofil (inkl. Informationsverhalten, Argumentationstyp, Tonpräferenz)
 - Gliederungsvorschlag (mit Abschnittstiteln und kurzer Inhaltsvorschau je Abschnitt)
-- Artikeltext (ca. 300–500 Wörter, klar gegliedert, aktiv und zielgerichtet geschrieben)
+- Artikeltext (ca. 600 Wörter, klar gegliedert, aktiv und zielgerichtet geschrieben)
 - SEO-Elemente:
    - Top-3 Keywords (natürlich eingebaut)
    - Meta-Title (max. 60 Zeichen)
@@ -700,4 +700,106 @@ Bitte liefere eine Liste von maximal 5 Themen (eine Zeile pro Thema, keine Numme
 "Es tut mir leid, aber der bereitgestellte Text enthält nicht genug Informationen, um relevante Themen oder Begriffe zur weiteren Recherche zu extrahieren. Könnten Sie bitte mehr Kontext oder einen ausführlicheren Text zur Verfügung stellen?"
 """
 
+# ===== Cluster 11: Context Merger =====
 
+context_merger_planner_prompt = """
+### GOAL
+- Set the scene: Du bist ein planender Meta-Agent, der alle Aufgaben des KI-Marketing-Agentens versteht
+- Describe action: Du hilfst, die beste Informationsbasis zusammenzustellen, bevor andere Tasks ausgeführt werden
+
+### CONTEXT
+- Hintergrund: Die Anfrage des Users lautet: "{user_input}"
+- Vorgegebener Task: {task}
+- Promptstruktur des Tasks:
+  {subtask_prompt}
+
+- Optional bereitgestellte Felder (frei vom User):
+  - zielgruppe: {zielgruppe}
+  - thema: {thema}
+  - tonalitaet: {tonalitaet}
+  - keyword_fokus: {keyword_fokus}
+  - plattform: {plattform}
+  - produktname: {produktname}
+  - gliederungspunkte: {gliederungspunkte}
+  - formatwunsch: {formatwunsch}
+
+### PURPOSE
+- Analysiere den Prompt des Tasks: Welche Anforderungen und Felder sind relevant?
+- Ziel: Kontext- und Feldstruktur so vorbereiten, dass der Subtask optimal arbeiten kann
+
+### INSTRUCTIONS
+1. Verarbeite den Task-Prompt und erkenne, was gebraucht wird
+2. Erkenne, ob ein Text, Bericht, Analyse oder Gliederung erwartet wird → response_type
+3. Nutze bereitgestellte Felder als Ausgangspunkt – prüfe auf Qualität und Ergänzungsbedarf
+4. Schlage relevante Datenquellen vor (Memory, PDF, Trends, Guidelines etc.)
+   - Gib für jede Quelle: Typ, Priorität (hoch/mittel/niedrig), Grund, ggf. Keywords
+5. Nenne Rückfragen, wenn Informationen fehlen
+6. Wenn technische Quellen wie Google Trends ausfallen könnten, erwähne das
+7. Gib eine transparente Begründung deiner Empfehlungen
+
+### PRESENTATION
+Bitte antworte im folgenden JSON-Format (keine Kommentare außerhalb der Struktur):
+{
+  "task": str,
+  "intent_summary": str,
+  "response_type": str,
+  "field_suggestions": {
+    "zielgruppe": str,
+    "thema": str,
+    "tonalitaet": str,
+    "keyword_fokus": str,
+    "plattform": str,
+    "produktname": str,
+    "gliederungspunkte": str,
+    "formatwunsch": str
+  },
+  "recommended_sources": [
+    {"type": str, "keywords": list, "priority": str, "reason": str}
+  ],
+  "questions": [str],
+  "issues": [
+    {"source": str, "error": str, "fallback_used": bool}
+  ],
+  "explanation": str,
+  "status": "awaiting_confirmation"
+}
+"""
+
+# Prompt für ContextMerger Phase 2 – finale Konsolidierung und Felder ausfüllen
+context_merger_executor_prompt = """
+### GOAL
+- Set the scene: Du bist ein Meta-Agent, der basierend auf bestätigten Quellen nun alle Informationen konsolidiert
+- Describe action: Du bereitest den vollständigen Kontext für den Subtask {task} vor
+
+### CONTEXT
+- Anfrage: "{user_input}"
+- Vorgegebener Task: {task}
+- Promptstruktur des Tasks:
+  {subtask_prompt}
+
+- Aggregierte Quellen:
+{merged_context}
+
+### INSTRUCTIONS
+1. Analysiere die vollständigen Kontextinformationen
+2. Erzeuge eine professionelle, strukturierte Zusammenfassung, die alle für den Task relevanten Aspekte enthält
+3. Extrahiere NUR die Felder, die aus dem Prompt des Tasks wirklich notwendig sind
+4. Die Felder sollen die Arbeit des Subtasks maximal erleichtern
+5. Wenn ein Feld nicht benötigt wird, weglassen oder mit "-" markieren
+
+### OUTPUT
+{
+  "final_context_summary": str,
+  "field_suggestions": {
+    "zielgruppe": str,
+    "thema": str,
+    "tonalitaet": str,
+    "keyword_fokus": str,
+    "plattform": str,
+    "produktname": str,
+    "gliederungspunkte": str,
+    "formatwunsch": str
+  },
+  "status": "finalized"
+}
+"""

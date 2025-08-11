@@ -1,4 +1,10 @@
-# streamlit_app.py
+# streamlit_app.py — v4 (Merger‑first, interaktive Quellen, ohne Notion/Drive)
+#
+# Änderungen ggü. v3:
+# - Notion/GDrive entfernt (UI + Param-Felder)
+# - Task "Marketingmaßnahmen planen" (tactical_actions) hinzugefügt
+# - Ergebnis: "💾 Ergebnis ins Kundengedächtnis speichern" + einfache Memory-Suche
+# - Kleine Robustheit (Defaults, Fehlertexte)
 
 import os
 import hashlib
@@ -10,23 +16,24 @@ import string
 import pandas as pd
 from collections import Counter
 
+from agent.context_merger import ContextMerger
 from agent.customer_memory import (
     save_customer_data,
     list_customer_ids,
     load_customer_memory,
-    save_customer_memory
+    save_customer_memory,
 )
 from agent.loader import load_pdf
+from agent.activity_log import (
+    load_events_as_dataframe,
+    log_event,
+)
 from agent.base_agent import run_agent
-from agent.activity_log import log_event, get_events
 
-# -----------------------------------------------------------------------------  
-# Environment laden (lokal & Produktion)  
-# -----------------------------------------------------------------------------
 load_dotenv()
 
-# -----------------------------------------------------------------------------  
-# Einfache Authentifizierung  
+# -----------------------------------------------------------------------------
+# Auth
 # -----------------------------------------------------------------------------
 def check_credentials(user: str, pwd: str) -> bool:
     expected_user = os.getenv("APP_USER")
@@ -40,7 +47,7 @@ if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 
 if not st.session_state.authenticated:
-    st.title("🔒 Login")
+    st.title("🔐 Login")
     user = st.text_input("Benutzername")
     pwd  = st.text_input("Passwort", type="password")
     if st.button("Anmelden"):
@@ -50,786 +57,347 @@ if not st.session_state.authenticated:
             st.error("Ungültige Anmeldedaten")
     st.stop()
 
-# -----------------------------------------------------------------------------  
-# Nach erfolgreichem Login: Streamlit-Konfiguration  
+# -----------------------------------------------------------------------------
+# Layout
 # -----------------------------------------------------------------------------
 st.set_page_config(page_title="Kunden-Upload & KI-Agent", layout="wide")
 
-# Persist Deep-Loop Session-State
-for key in ('last_task', 'conv_id', 'questions', 'response'):
-    if key not in st.session_state:
-        st.session_state[key] = None if key in ('last_task', 'conv_id') else []
+if 'context_plan' not in st.session_state:
+    st.session_state.context_plan = {}
+if 'context_bundle' not in st.session_state:
+    st.session_state.context_bundle = {}
+if 'proposed_sources' not in st.session_state:
+    st.session_state.proposed_sources = []
+if 'selected_sources' not in st.session_state:
+    st.session_state.selected_sources = []
+if 'source_params' not in st.session_state:
+    st.session_state.source_params = {}
+if 'conv_id' not in st.session_state:
+    st.session_state.conv_id = None
 
-# -----------------------------------------------------------------------------  
-# Sidebar: User- vs. Admin-Ansicht  
-# -----------------------------------------------------------------------------
-page = st.sidebar.selectbox("Ansicht wählen:", ["🎯 User-Tasks", "⚙️ Admin-Dashboard"])
+page = st.sidebar.selectbox("Ansicht wählen:", ["🎯 User-Tasks", "⚙️ Admin-Dashboard"]) 
 
-# ===============================  
-# Admin-Dashboard  
+# ===============================
+# Admin
 # ===============================
 if page == "⚙️ Admin-Dashboard":
     st.title("⚙️ Admin-Dashboard")
+    try:
+        df = load_events_as_dataframe()
+    except Exception:
+        df = pd.DataFrame(columns=["type","timestamp","customer_id","task","rating","comment","mode","input_tokens","output_tokens"]) 
 
-    # Lade alle Events
-    events = get_events()
-    df = pd.DataFrame(events)
-    if not df.empty:
-        df.columns = df.columns.str.strip().str.lower()
-        if "type" not in df.columns:
-            st.warning("⚠️ Spalte 'type' nicht im Event-Log gefunden.")
-            df["type"] = ""
-    else:
-        df = pd.DataFrame(columns=["type", "timestamp", "customer_id", "task", "rating", "comment", "mode", "input_tokens", "output_tokens"])
-
-    # 1) Kunden-Übersicht
     st.subheader("🔹 Kunden-Übersicht")
-    customers = list_customer_ids()
-    overview = []
-    for cid in customers:
-        tasks = df[(df["type"] == "task_run") & (df["customer_id"] == cid)]
-        last = tasks.sort_values('timestamp', ascending=False).head(3)
-        last_str = "\n".join(f"{r['task']} @ {r['timestamp']}" for _, r in last.iterrows()) or "-"
-        ratings = df[(df["type"] == "rating") & (df["customer_id"] == cid)]["rating"]
-        avg = round(ratings.mean(), 2) if len(ratings) > 0 else "-"
-        overview.append({"Kunden-ID": cid, "Letzte Tasks": last_str, "Ø Bewertung": avg})
-    st.table(overview)
-
-    # 2) Kosten & Token-Verbrauch
-    st.subheader("💸 Kosten & Token-Verbrauch")
-    usage = df[df["type"] == "usage"]
-    if not usage.empty:
-        usage_grp = (
-            usage
-            .groupby(['customer_id', 'mode'])
-            .agg({'input_tokens': 'sum', 'output_tokens': 'sum'})
-            .reset_index()
-        )
-        usage_grp['cost'] = (
-            usage_grp['input_tokens'] * 0.00000465 +
-            usage_grp['output_tokens'] * 0.00001395
-        )
-        st.dataframe(usage_grp)
-        summary = usage_grp.groupby('customer_id')['cost'].sum().reset_index()
-        summary = summary.set_index('customer_id')
-        st.bar_chart(summary)
-
-    else:
-        st.info("Noch keine Usage-Daten.")
-
-    # 3) Trend- & Zeitreihen-Analysen
-    st.subheader("📈 Trend-Analysen")
-    tasks_df = df[df["type"] == "task_run"]
-    if not tasks_df.empty:
-        daily_tasks = tasks_df.set_index('timestamp').resample('D').size().rename('tasks')
-        st.line_chart(daily_tasks)
-    else:
-        st.info("Noch keine Task-Daten.")
-    if not usage.empty:
-        daily_usage = usage.set_index('timestamp').resample('D').sum()[['input_tokens','output_tokens']]
-        st.area_chart(daily_usage)
-    else:
-        st.info("Noch keine Usage-Daten für Trend.")
-
-    # 5) Aktivitätslog & CSV-Export
-    st.subheader("📝 Aktivitätslog")
     if not df.empty:
-        st.dataframe(df)
-        csv = df.to_csv(index=False).encode('utf-8')
-        st.download_button("Export Log als CSV", data=csv, file_name="activity_log.csv", mime="text/csv")
-    else:
-        st.info("Noch keine Events geloggt.")
+        customers = sorted(set(df[df["customer_id"].notna()]["customer_id"]))
+        tasks_df = df[df["type"] == "task_run"]
+        feedback = df[df["type"] == "rating"]
+        usage   = df[df["type"] == "usage"]
 
-    # 6) Qualitäts- & Feedback-Loop
-    st.subheader("🗣️ Feedback & Ratings")
-    feedback = df[df["type"] == "rating"]
-    if not feedback.empty:
-        st.dataframe(feedback[['customer_id','rating','comment','timestamp']])
+        st.write("Anzahl Kunden:", len(customers))
         words = Counter()
-        for c in feedback['comment'].dropna():
-            for w in c.lower().split():
-                words[w] += 1
-        st.write("Top 5 Feedback-Begriffe:", words.most_common(5))
+        if not feedback.empty:
+            for c in feedback["comment"].dropna().astype(str):
+                for w in c.lower().split():
+                    words[w] += 1
+            st.write("Top 5 Feedback-Begriffe:", words.most_common(5))
+        else:
+            st.info("Noch kein Feedback vorhanden.")
+
+        st.subheader("🔍 Details pro Kunde")
+        for cid in customers:
+            with st.expander(f"Kunde {cid}"):
+                st.write("Letzte Tasks", tasks_df[tasks_df["customer_id"] == cid][['task','timestamp']])
+                st.write("Token Usage", usage[usage["customer_id"] == cid][['input_tokens','output_tokens','timestamp']])
+                st.write("Feedback", feedback[feedback["customer_id"] == cid][['rating','comment','timestamp']])
+                st.write("Rohes Log", df[df["customer_id"] == cid])
     else:
-        st.info("Noch kein Feedback vorhanden.")
-
-    # 7) Interactive Drill-Downs
-    st.subheader("🔍 Details pro Kunde")
-    for cid in customers:
-        with st.expander(f"Kunde {cid}"):
-            st.write("Letzte Tasks", tasks_df[tasks_df["customer_id"] == cid][['task','timestamp']])
-            st.write("Token Usage", usage[usage["customer_id"] == cid][['input_tokens','output_tokens','timestamp']])
-            st.write("Feedback", feedback[feedback["customer_id"] == cid][['rating','comment','timestamp']])
-            st.write("Rohes Log", df[df["customer_id"] == cid])
-
+        st.info("Noch keine Events vorhanden.")
     st.stop()
 
-# ===============================  
-# User-Tasks  
+# ===============================
+# User-Tasks
 # ===============================
 st.title("👤 Kunden-Upload & KI-Agent")
 
-# Initialisiere leeres params-Dictionary, damit es für spätere Blöcke existiert
-params = {}
-
-# Kundenprofil anlegen
-customer_name = st.text_input("Name des neuen Kunden (z. B. Kosmetikstudio Müller)")
+# Kundenprofil
+customer_name = st.text_input("Name des neuen Kunden")
 url_input     = st.text_input("Website-URL des Kunden")
-pdf_file      = st.file_uploader("Optional: PDF-Datei mit Informationen zum Kunden", type=["pdf"])
-notes         = st.text_area("Optional: Weitere Informationen zum Kunden")
+pdf_file      = st.file_uploader("Optional: PDF-Datei", type=["pdf"])
+notes         = st.text_area("Optionale Notizen")
 
 if st.button("✅ Kundenprofil erstellen"):
     if not customer_name or not url_input:
-        st.error("Bitte gib mindestens den Kundennamen und eine Website-URL an.")
+        st.error("Bitte Kundennamen und Website-URL angeben.")
     else:
         identifier = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
         pdf_text = load_pdf(pdf_file) if pdf_file else ""
-        save_customer_data(identifier, {
-            "name": customer_name,
-            "url": url_input,
-            "pdf": pdf_text,
-            "notes": notes
-        })
+        save_customer_data(identifier, {"name": customer_name,"url": url_input,"pdf": pdf_text,"notes": notes})
         st.success(f"Kundenprofil erstellt. ID: {identifier}")
 
-st.markdown("---")
-st.header("🎯 Marketing-Tasks mit KI-Agent")
+st.subheader("🧠 Kontextplanung (Schritt 1)")
 
-mode = "deep"
+# Task-Auswahl
+task_options = {
+    "–": "Bitte wählen",
+    "Content Analyse": "content_analysis",
+    "Content Writing": "content_writing",
+    "Wettbewerbsanalyse": "competitive_analysis",
+    "SEO Audit": "seo_audit",
+    "SEO Optimierung": "seo_optimization",
+    "Technisches SEO (Lighthouse)": "seo_lighthouse",
+    "Kampagnenplanung": "campaign_plan",
+    "Landingpage Strategie": "landingpage_strategy",
+    "Alt-Tag Generator": "alt_tag_writer",
+    "Marketingmaßnahmen planen": "tactical_actions",
+}
 
+ui_task = st.selectbox("Wähle Task", list(task_options.keys()))
+selected_task = task_options.get(ui_task)
 
-# ---------------------------------------
-# 🧠 Gedächtnis-Verwaltung (FAISS)
-# ---------------------------------------
-with st.expander("🧠 Gedächtnis-Verwaltung (FAISS)", expanded=False):
-    memory_col1, memory_col2 = st.columns(2)
+# Freie Felder
+col1, col2, col3 = st.columns(3)
+with col1:
+    zielgruppe = st.text_input("Zielgruppe")
+    tonalitaet = st.text_input("Tonalität")
+with col2:
+    thema = st.text_input("Thema / Fokus")
+    keyword_fokus = st.text_input("Keyword-Fokus")
+with col3:
+    plattform = st.text_input("Plattform")
+    produktname = st.text_input("Produktname")
 
-    with memory_col1:
-        if st.button("📥 Wissen speichern"):
-            try:
-                response = run_agent(
-                    task="memory_write",
-                    reasoning_mode=mode,
-                    text=params.get("text", "")
-                )
-                st.success(response["response"])
-            except Exception as e:
-                st.error(f"Fehler beim Speichern: {e}")
+gliederungspunkte = st.text_area("Gewünschte Gliederungspunkte")
+formatwunsch = st.text_input("Gewünschtes Format")
 
-    with memory_col2:
-        query = st.text_input("🔍 Gedächtnis durchsuchen", "")
-        if query:
-            try:
-                response = run_agent(
-                    task="memory_search",
-                    reasoning_mode=mode,
-                    query=query
-                )
-                st.info("Suchergebnisse:")
-                st.write(response["response"])
-            except Exception as e:
-                st.error(f"Fehler bei der Suche: {e}")
+query = st.text_area("Beschreibe dein Ziel / deine Frage")
 
-st.markdown("🔍 Aktiver Modus: **Tiefenanalyse** (alle Aufgaben laufen in ausführlicher Analyse)")
-task = st.selectbox("Wähle eine Aufgabe:", [
-    "–",
-    "Content Analyse",
-    "Content Writing",
-    "Wettbewerbsanalyse",
-    "SEO Audit",
-    "SEO Optimierung",
-    "Technisches SEO (Lighthouse)",
-    "Kampagnenplanung",
-    "Landingpage Strategie",
-    "Marketingmaßnahmen planen",
-    "Alt-Tag Generator"
-])
+if st.button("🔍 Vorschläge & Plan anzeigen"):
+    merger = ContextMerger(
+        query=query,
+        task=selected_task,
+        url=url_input,
+        customer_id=customer_name,
+        pdf_path=None,
+        fields={
+            "zielgruppe": zielgruppe,
+            "thema": thema,
+            "tonalitaet": tonalitaet,
+            "keyword_fokus": keyword_fokus,
+            "plattform": plattform,
+            "produktname": produktname,
+            "gliederungspunkte": gliederungspunkte,
+            "formatwunsch": formatwunsch,
+        }
+    )
+    plan = merger.reason_before_merge()
+    st.session_state.context_plan = plan.get("plan", {})
+    # Notion/GDrive filtern, falls der Merger sie noch vorschlägt
+    proposed = [s for s in plan.get("proposed_sources", []) if s.get("id") not in {"notion","gdrive"}]
+    st.session_state.proposed_sources = proposed
+    st.success("Plan erstellt. Wähle nun die Quellen unten aus und bestätige.")
 
-# Reset bei Task- oder Modus-Wechsel
-if task != st.session_state.last_task:
-    st.session_state.conv_id = None
-    st.session_state.questions = []
-    st.session_state.response = ""
-    st.session_state.last_task = task
-if "start_agent" not in st.session_state:
-    st.session_state.start_agent = False
+# Plan-Preview
+with st.expander("🧭 Kontext-Plan (raw)"):
+    st.json(st.session_state.get("context_plan", {}))
 
+# Schritt 2: Quellen-Auswahl
+st.subheader("📦 Quellen auswählen (Schritt 2)")
+proposed = st.session_state.get("proposed_sources", [])
+if not proposed:
+    st.info("Noch keine vorgeschlagenen Quellen. Erzeuge zuerst den Plan oben.")
+else:
+    chosen_ids = []
+    src_params = {}
+    cols = st.columns(2)
+    for i, s in enumerate(proposed):
+        with cols[i % 2]:
+            default = bool(s.get("default"))
+            checked = st.checkbox(f"{s['label']} ({s['id']})", value=default, key=f"src_{s['id']}")
+            st.caption(s.get("reason", ""))
+            if checked:
+                chosen_ids.append(s['id'])
+                # Per-Quelle Parameter
+                if s['id'] == 'rss':
+                    feeds = st.text_area("RSS-Feeds (eine pro Zeile)", key="rss_feeds")
+                    keywords = st.text_input("RSS-Keywords, komma-separiert", key="rss_kw")
+                    src_params['rss'] = {
+                        'feeds': [f.strip() for f in feeds.splitlines() if f.strip()],
+                        'keywords': [k.strip() for k in keywords.split(',') if k.strip()],
+                        'days': 14,
+                    }
+                if s['id'] == 'trends':
+                    tr_kw = st.text_input("Trends-Keywords, komma-separiert", key="tr_kw")
+                    geo = st.text_input("Geo (z.B. DE)", value="DE", key="tr_geo")
+                    timeframe = st.text_input("Timeframe (z.B. today 3-m)", value="today 3-m", key="tr_tf")
+                    src_params['trends'] = {
+                        'keywords': [k.strip() for k in tr_kw.split(',') if k.strip()],
+                        'geo': geo, 'timeframe': timeframe,
+                    }
+                if s['id'] == 'destatis':
+                    q = st.text_input("DESTATIS Query", key="destatis_q")
+                    src_params['destatis'] = {'query': q}
+                if s['id'] == 'ads':
+                    terms = st.text_input("Ads Suchbegriffe, komma-separiert", key="ads_terms")
+                    platform = st.selectbox("Plattform", ["meta","google","linkedin"], key="ads_plat")
+                    src_params['ads'] = {'terms': [k.strip() for k in terms.split(',') if k.strip()], 'platform': platform}
+                if s['id'] == 'serp':
+                    provider = st.selectbox("SERP Provider", ["serpapi","bing"], key="serp_provider")
+                    q = st.text_input("SERP Query", value=keyword_fokus or thema or query[:80], key="serp_q")
+                    src_params['serp'] = {'provider': provider, 'query': q}
+                if s['id'] == 'competitors':
+                    domains = st.text_area("Wettbewerber-Domains (eine pro Zeile)", key="cmp_domains")
+                    src_params['competitors'] = {'domains': [d.strip() for d in domains.splitlines() if d.strip()]}
 
-# Kundenkontext
+    st.session_state.selected_sources = chosen_ids
+    st.session_state.source_params = src_params
+
+    if st.button("✅ Bestätigen & Kontext laden"):
+        merger = ContextMerger(
+            query=query,
+            task=selected_task,
+            url=url_input,
+            customer_id=customer_name,
+            pdf_path=None,
+            fields={
+                "zielgruppe": zielgruppe,
+                "thema": thema,
+                "tonalitaet": tonalitaet,
+                "keyword_fokus": keyword_fokus,
+                "plattform": plattform,
+                "produktname": produktname,
+                "gliederungspunkte": gliederungspunkte,
+                "formatwunsch": formatwunsch,
+            },
+            selected_sources=st.session_state.selected_sources,
+            source_params=st.session_state.source_params,
+        )
+        _ = merger.collect_context_after_confirmation()
+        bundle = merger.get_final_context_bundle()
+        st.session_state.context_bundle = bundle
+        st.success("Kontext geladen & zusammengefasst.")
+
+# Anzeige: Provenance & Merged Context
+bundle = st.session_state.get("context_bundle", {})
+if bundle:
+    with st.expander("📦 Quellen (Provenance)"):
+        for i, p in enumerate(bundle.get("provenance", []), 1):
+            cat = (p.get('meta') or {}).get('category','-')
+            st.markdown(f"**Quelle {i}:** {p.get('source','-')}  |  Kategorie: {cat}  |  Score: {p.get('score','-')}")
+            if p.get('preview'):
+                st.caption(p['preview'])
+    with st.expander("🧱 Merged Context (raw)"):
+        st.text(bundle.get("merged_context", ""))
+
+# ===============================
+# Schritt 3: Tasks ausführen
+# ===============================
+st.header("🎯 Marketing-Tasks")
+mode = "deep"  # Legacy-Param, Base-Agent ignoriert ihn
+
 customer_options = ["– Kein Kunde –"] + list_customer_ids()
-selected_customer = st.selectbox("🧠 Ordne Analyse optional einem Kunden zu:", customer_options)
+selected_customer = st.selectbox("🧠 Ordne optional einem Kunden zu:", customer_options)
 customer_id = selected_customer if selected_customer != "– Kein Kunde –" else None
 customer_memory = load_customer_memory(customer_id) if customer_id else ""
 
-# Gemeinsame Inputs
-url = st.text_input("🌐 (Optional) Website-URL", placeholder="https://…")
-context = st.text_area("📄 Optionaler Kontext/Text", height=200)
-optional_pdf = st.file_uploader("📥 Optional: Kontext-PDF hochladen", type=["pdf"])
-optional_pdf_path = None
-if optional_pdf:
-    optional_pdf_path = "optional_context.pdf"
-    with open(optional_pdf_path, "wb") as f:
-        f.write(optional_pdf.read())
+url = st.text_input("🌐 (Optional) Focus-URL", value=url_input)
 
-# Task-spezifische Inputs
-kunde = mitbewerber = eigene_url = wettbewerber_urls = None
-briefing_typ = kanal = thema = zielgruppe = tonalitaet = ""
-
-if task == "Content Analyse":
-    task_id = "content_analysis"
-    use_auto_sources = st.session_state.get("use_auto_sources", False)
-    combined_context = (customer_memory + "\n\n" + context).strip()
-
-    if not combined_context and not url.strip() and not optional_pdf_path:
-        st.error("❗ Bitte gib mindestens Kontexttext, URL oder PDF an.")
-        st.stop()
-    if use_auto_sources:
-        theme_text = " ".join([
-            thema,
-            zielgruppe,
-            combined_context
-        ]).strip()
-
-        if theme_text and len(theme_text.strip()) > 10:
-            try:
-                extract_result = run_agent(task="extract_topics", text=theme_text)
-            except Exception as e:
-                st.warning(f"⚠️ Themen-Extraktion fehlgeschlagen: {e}")
-                topic_keywords = []
-            else:
-                topic_keywords = []
-
-        params["topic_keywords"] = topic_keywords
-
-    params = {
-        "task": task_id,
-        "text": combined_context,
-        "url": url.strip(),
-        "customer_id": customer_id
-    }
-    if optional_pdf_path:
-        params["pdf_path"] = optional_pdf_path
-
-elif task == "Content Writing":
-    task_id = "content_writing"
-    zielgruppe = st.text_input("👥 Zielgruppe")
-    tonalitaet = st.text_input("🎙️ Tonalität")
-    thema = st.text_input("📝 Thema")
-    format_laenge = st.text_input("🧾 Format & Länge (optional)", placeholder="z. B. Blogartikel, 500 Wörter")
-
-    if not (zielgruppe and tonalitaet and thema):
-        st.error("❗ Bitte Zielgruppe, Tonalität und Thema angeben.")
-        st.stop()
-    combined_context = (customer_memory + "\n\n" + context).strip()
-    if not (combined_context or url.strip() or optional_pdf_path):
-        st.error("❗ Bitte gib mindestens Kontexttext, URL oder PDF an.")
-        st.stop()
-    params = {
-        "task": task_id,
-        "zielgruppe": zielgruppe,
-        "tonalitaet": tonalitaet,
-        "thema": thema,
-        "format_laenge": format_laenge.strip() or "",
-        "text": customer_memory + "\n\n" + context,
-        "customer_id": customer_id
-    }
-    if optional_pdf_path:
-        params["pdf_path"] = optional_pdf_path
-
-elif task == "Wettbewerbsanalyse":
-    task_id = "competitive_analysis"
-
-    eigene_url = st.text_input("🌐 Eigene Website")
-    wettbewerber_urls_input = st.text_area("🏢 Wettbewerber-URLs (eine pro Zeile)", height=150, placeholder="https://www.firma-a.de\nhttps://www.firma-b.de")
-    wettbewerber_namen_input = st.text_area("🔠 Wettbewerber-Namen (eine pro Zeile)", height=150, placeholder="Firma A\nFirma B")
-
-    wettbewerber_urls = [url.strip() for url in wettbewerber_urls_input.split("\n") if url.strip()]
-    wettbewerber_namen = [name.strip() for name in wettbewerber_namen_input.split("\n") if name.strip()]
-
-    if not eigene_url:
-        st.error("❗ Bitte eigene Website angeben.")
-        st.stop()
-
-    st.subheader("📊 Optional: Werbebibliotheken einbeziehen")
-    facebook = st.checkbox("📘 Facebook Ads Library einbeziehen?")
-    google = st.checkbox("🔍 Google Ads Transparency Center einbeziehen?")
-    linkedin = st.checkbox("💼 LinkedIn Ads Library einbeziehen?")
-
-    ads_themen_input = st.text_input("🔎 Themen/Produkte für Werbeanalyse (kommagetrennt)")
-    ads_themen_liste = [k.strip() for k in ads_themen_input.split(",") if k.strip()]
-    unternehmen = st.text_input("🏷️ Unternehmensname (für Ad-Suche)")
-
-    combined_context = (customer_memory + "\n\n" + context).strip()
-
-    if not combined_context and not eigene_url and not optional_pdf_path:
-        st.error("❗ Kein Kontext vorhanden – bitte Text, eigene URL oder PDF angeben.")
-        st.stop()
-    params = {
-        "task": task_id,
-        "eigene_url": eigene_url,
-        "wettbewerber_urls": wettbewerber_urls,
-        "wettbewerber_namen": wettbewerber_namen,
-        "customer_id": customer_id,
-        "ads_keywords": ads_themen_liste,
-        "text": combined_context,
-        "customer_name": unternehmen,
-        "branche": st.session_state.get("branche", ""),
-        "zielgruppe": st.session_state.get("zielgruppe", "")
-    }
-
-    if facebook:
-        params["facebook_company"] = unternehmen
-    if google:
-        params["google_company"] = unternehmen
-    if linkedin:
-        params["linkedin_company"] = unternehmen
-    if optional_pdf_path:
-        params["pdf_path"] = optional_pdf_path
-
-elif task == "SEO Audit":
-    task_id = "seo_audit"
-    combined_context = (customer_memory + "\n\n" + context).strip()
-    if not combined_context and not url.strip() and not optional_pdf_path:
-        st.error("❗ Bitte gib mindestens Text, URL oder PDF für die Analyse an.")
-        st.stop()
-    params = {
-        "task": task_id,
-        "text": combined_context,
-        "url": url.strip(),
-        "customer_id": customer_id
-    }
-    if optional_pdf_path:
-        params["pdf_path"] = optional_pdf_path
-
-elif task == "SEO Optimierung":
-    task_id = "seo_optimize"
-
-    combined_context = (customer_memory + "\n\n" + context).strip()
-
-    if not combined_context and not url.strip() and not optional_pdf_path:
-        st.error("❗ Bitte gib mindestens Text, URL oder PDF für die Optimierung an.")
-        st.stop()
-
-    params = {
-        "task": task_id,
-        "text": combined_context,
-        "url": url.strip(),
-        "customer_id": customer_id
-    }
-
-    if optional_pdf_path:
-        params["pdf_path"] = optional_pdf_path
-
-elif task == "Technisches SEO (Lighthouse)":
-    task_id = "seo_lighthouse"
-    urls_input = st.text_area("🔗 URLs zur Analyse (eine pro Zeile)")
-    urls = [u.strip() for u in urls_input.splitlines() if u.strip()]
-
-    if not urls:
-        st.error("❗ Bitte mindestens eine URL angeben.")
-        st.stop()
-
-
-    zielgruppe = st.text_input("👥 Zielgruppe (optional)", placeholder="z. B. Fachpublikum, Neukunden, KMU")
-    thema = st.text_input("🧩 Fokus oder Thema der Website (optional)", placeholder="z. B. Performance, UX, Dienstleistung")
-    branche = st.text_input("🏢 Branche oder Geschäftsbereich (optional)", placeholder="z. B. Agentur, Einzelhandel, SaaS")
-
-    combined_context = (customer_memory + "\n\n" + context).strip()
-
-    if not combined_context and not optional_pdf_path:
-        st.warning("⚠️ Hinweis: Es wurde kein zusätzlicher Kontext übergeben. Nur URL wird verwendet.")
-
-    params = {
-        "task": "seo_lighthouse",
-        "urls": urls,
-        "zielgruppe": zielgruppe.strip(),
-        "thema": thema.strip(),
-        "branche": branche.strip(),
-        "text": combined_context,
-        "customer_id": customer_id
-    }
-
-    if optional_pdf_path:
-        params["pdf_path"] = optional_pdf_path
-
-elif task == "Kampagnenplanung":
-    task_id = "campaign_plan"
-
-    ziel = st.text_input("🎯 Kampagnenziel")
-    produkt = st.text_input("📦 Produkt/Dienstleistung")
-    zeitraum = st.text_input("🕒 Zeitraum")
-    zielgruppe = st.text_input("👥 Zielgruppe", placeholder="z. B. B2B Entscheider, junge Erwachsene")
-    thema = st.text_input("🧩 Thema der Kampagne", placeholder="z. B. Automatisierung, neue Produktlinie")
-
-    combined_context = (customer_memory + "\n\n" + context).strip()
-    if not ziel.strip() and not produkt.strip() and not combined_context and not optional_pdf_path:
-        st.error("❗ Bitte gib mindestens Ziel, Produkt oder Kontext an.")
-        st.stop()
-
-    params = {
-        "task": task_id,
-        "ziel": ziel.strip() or "Nicht angegeben",
-        "produkt": produkt.strip() or "Nicht angegeben",
-        "zeitraum": zeitraum.strip() or "Nicht definiert",
-        "zielgruppe": zielgruppe.strip() or "Zielgruppe nicht angegeben",
-        "thema": thema.strip() or "Thema nicht angegeben",
-        "text": combined_context,
-        "customer_id": customer_id
-    }
-
-    if optional_pdf_path:
-        params["pdf_path"] = optional_pdf_path
-
-
-elif task == "Landingpage Strategie":
-    task_id = "landingpage_strategy"
-
-    if not url.strip():
-        st.error("❗ Verpflichtende URL angeben.")
-        st.stop()
-
-    zielgruppe = st.text_input("👥 Zielgruppe")
-    angebot = st.text_input("💡 Angebot")
-
-    combined_context = (customer_memory + "\n\n" + context).strip()
-    if not combined_context and not optional_pdf_path:
-        st.warning("⚠️ Es wurde kein Kontexttext oder PDF übergeben – es wird nur die URL analysiert.")
-
-    params = {
-        "task": task_id,
-        "zielgruppe": zielgruppe.strip() or "Zielgruppe noch nicht definiert",
-        "angebot": angebot.strip() or "",
-        "url": url.strip(),
-        "text": combined_context,
-        "customer_id": customer_id
-    }
-
-    if optional_pdf_path:
-        params["pdf_path"] = optional_pdf_path
-
-    # Extra-Sicherung: sicherstellen, dass Feld existiert
-    params["zielgruppe"] = params.get("zielgruppe", "Zielgruppe noch nicht definiert").strip()
-
-elif task == "Marketingmaßnahmen planen":
-    task_id = "tactical_actions"
-    ziel = st.text_input("Ziel der Maßnahmen")
-    zeitfenster = st.text_input("Zeitraum")
-
-    combined_context = (customer_memory + "\n\n" + context).strip()
-
-    # Benutzerwarnung, wenn alles leer
-    if not ziel.strip() and not zeitfenster.strip() and not combined_context and not optional_pdf_path:
-        st.error("❗ Bitte gib mindestens Ziel, Zeitraum oder Kontext an.")
-        st.stop()
-
-    params = {
-        "task": task_id,
-        "ziel": ziel.strip() or "Nicht angegeben",
-        "zeitfenster": zeitfenster.strip() or "Nicht definiert",
-        "text": combined_context,
-        "customer_id": customer_id
-    }
-
-    # Robust: leeres Textfeld absichern
-    params["text"] = params.get("text", "").strip()
-
-    if optional_pdf_path:
-        params["pdf_path"] = optional_pdf_path
-
-
-elif task == "Alt-Tag Generator":
-    task_id = "alt_tag_writer"
-
-    st.markdown("🔍 Beschreibt automatisch alle Bilder einer Webseite mit SEO-relevanten Alt-Tags.")
-
-    url = st.text_input("🌐 Website-URL (Pflicht)", placeholder="https://www.beispielseite.de")
-    zielgruppe = st.text_input("👥 Zielgruppe (optional)", placeholder="z. B. Frauen 30–50, lokal interessiert")
-    branche = st.text_input("🏢 Branche / Produktfeld (optional)", placeholder="z. B. Kosmetikstudio, Bäckerei, Anwaltskanzlei")
-    kontexttext = st.text_area("📄 Optionaler Kontexttext oder Beschreibung", height=150)
-    include_svg = st.checkbox("🖼️ SVG-Bilder einbeziehen?", value=False, help="Standardmäßig werden SVGs gefiltert. Aktiviere diese Option, wenn auch Icons und Logos wichtig sind.")
-
-
-    if not url.strip():
-        st.error("❗ Bitte gib eine gültige Website-URL an.")
-        st.stop()
-
-    combined_context = (customer_memory + "\n\n" + kontexttext).strip()
-
-    params = {
-        "task": task_id,
-        "url": url.strip(),
-        "zielgruppe": zielgruppe.strip(),
-        "branche": branche.strip(),
-        "text": combined_context,
-        "customer_id": customer_id,
-        "include_svg": include_svg
-    }
-
-    if optional_pdf_path:
-        params["pdf_path"] = optional_pdf_path
-
-elif task == "Themen extrahieren":
-    task_id = "extract_topics"
-
-    params = {
-        "task": task_id,
-        "text": (customer_memory + "\n\n" + context).strip(),
+if st.button("🤖 KI Agent starten"):
+    task_id = selected_task
+    params = dict(bundle.get("fields", {}))
+    params.update({
+        "text": bundle.get("merged_context", ""),
         "url": url,
-        "customer_id": customer_id
-    }
-    if optional_pdf_path:
-        params["pdf_path"] = optional_pdf_path
-
-    # ❗ Absicherung: mindestens eine Datenquelle muss vorhanden sein
-    if not (params["text"].strip() or url or customer_id or optional_pdf_path):
-        st.error("❗ Bitte gib mindestens Text, URL, Kundenkontext oder PDF an.")
-        st.stop()
-
-# -------------------------------
-# Externe Datenquellen (automatisch vs. manuell)
-# -------------------------------
-
-show_sources = task in [
-    "Content Analyse", "Content Writing", "Kampagnenplanung",
-    "Landingpage Strategie", "SEO Optimierung",
-    "Marketingmaßnahmen planen", "Wettbewerbsanalyse"
-]
-
-rss_input = trend_input = destatis_input = ""
-params["use_auto_sources"] = False  # Standardwert
-
-if show_sources:
-    st.markdown("---")
-    st.subheader("🌐 Themenbasierte externe Datenquellen")
-
-    use_sources = st.checkbox("🔍 Automatische Themenvorschläge verwenden?", value=True)
-    params["use_auto_sources"] = use_sources  # Nur hier setzen
-
-    if not use_sources:
-        rss_input = st.text_area("📡 RSS-Feed URLs (eine pro Zeile)", height=100)
-        trend_input = st.text_input("📈 Google Trends Keywords (kommagetrennt)")
-        destatis_input = st.text_input("📊 DESTATIS/Eurostat-Suchbegriffe (kommagetrennt)")
-
-        rss_feeds_list = [u.strip() for u in rss_input.splitlines() if u.strip()]
-        trend_keywords_list = [k.strip() for k in trend_input.split(",") if k.strip()]
-        destatis_queries_list = [d.strip() for d in destatis_input.split(",") if d.strip()]
-
-        if rss_feeds_list:
-            params["rss_feeds"] = rss_feeds_list
-        if trend_keywords_list:
-            params["trend_keywords"] = trend_keywords_list
-        if destatis_queries_list and task in [
-            "Content Analyse", "Content Writing", "Kampagnenplanung",
-            "Landingpage Strategie", "SEO Optimierung", "Monatsreport",
-            "Marketingmaßnahmen planen", "Wettbewerbsanalyse"
-        ]:
-            params["destatis_queries"] = destatis_queries_list
-
-
-# -------------------------------
-# Initialer Agent-Call
-# -------------------------------
-clar = {}  # Initialisiere Rückfragen-Parameter
-
-# -------------------------------
-# Themenvorschlag + Bestätigung
-# -------------------------------
-st.warning(f"DEBUG: use_auto_sources={params.get('use_auto_sources')} | themen_bestaetigt={st.session_state.get('themen_bestaetigt')}")
-
-if params.get("use_auto_sources") and not st.session_state.get("themen_bestaetigt"):
-
-    st.info("🤖 Der Agent extrahiert automatisch relevante Themen für externe Datenquellen…")
-
-    theme_text = " ".join([
-        params.get("thema", ""),
-        params.get("zielgruppe", ""),
-        params.get("text", ""),
-        customer_memory
-    ])
-
-    extract_result = run_agent(
-        task="extract_topics",
-        reasoning_mode=mode,
-        conversation_id=None,
-        clarifications={},
-        text=theme_text
-    )
-
-    if not isinstance(extract_result, dict) or not isinstance(extract_result.get("response"), str):
-        st.error("Agenten-Fehler: Antwort ist kein gültiges Dictionary mit String-Antwort.")
-        st.write("DEBUG: extract_result:", extract_result)
-        st.stop()
-
-    proposed_topics = [line.strip("• ").strip() for line in extract_result["response"].splitlines() if line.strip()]
-
-    st.session_state.auto_topics = proposed_topics
-    st.session_state.final_topics = proposed_topics
-
-    # Nur initial setzen – oder nach Reset
-    if "editable_topics" not in st.session_state or st.session_state.get("reset_topics", False):
-        st.session_state.editable_topics = "\n".join(proposed_topics)
-        st.session_state.reset_topics = False
-
-    st.markdown("### 🧠 Themenvorschlag des Agenten:")
-    editable_topics = st.text_area(
-        "✏️ Bearbeite oder lösche die vorgeschlagenen Themen (ein Thema pro Zeile):",
-        value=st.session_state.editable_topics,
-        height=150
-    )
-
-    st.session_state.editable_topics = editable_topics
-
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        if st.button("✅ Themen übernehmen und starten", key="confirm_edit"):
-            user_topics = [line.strip() for line in editable_topics.splitlines() if line.strip()]
-            if not user_topics:
-                st.warning("Bitte gib mindestens ein Thema an.")
-                st.stop()
-            else:
-                params["topic_keywords"] = user_topics
-                st.session_state.themen_bestaetigt = True
-                st.session_state.start_agent = True
-                st.rerun()
-    with col2:
-        if st.button("🗘 Themen zurücksetzen", key="reset_topics_button"):
-            st.session_state.reset_topics = True
-            st.rerun()
-
-# -------------------------------
-# Manueller Start-Button: Nur wenn keine Themen vorgeschlagen oder bereits bestätigt
-# -------------------------------
-if not params.get("use_auto_sources") or st.session_state.get("themen_bestaetigt"):
-    if "confirm_edit" not in st.session_state or not st.session_state.confirm_edit:
-        if st.button("🤖 KI Agent starten", key="manual_start_button"):
-            st.session_state.start_agent = True
-
-# -------------------------------
-# Initialer Agent-Call
-# -------------------------------
-if ((not params.get("use_auto_sources")) or st.session_state.get("themen_bestaetigt")) and st.session_state.start_agent:
-
-    # Validierung für Tasks mit Mindestanforderungen
-    required_fallback_keys = {
-        "tactical_actions": ["text", "url", "customer_id"],
-        "seo_optimization": ["text", "url", "customer_id"],
-        "content_analysis": ["text", "url", "customer_id"],
-    }
-    fallback_keys = required_fallback_keys.get(task_id, [])
-    if fallback_keys and not any(params.get(k) for k in fallback_keys):
-        st.error(f"❗ Der Agent benötigt mindestens einen dieser Werte: {', '.join(fallback_keys)}.")
-        st.stop()
-
-    # --------------------------------
-    # Mapping für lesbare Tasknamen → interne Task-IDs
-    # --------------------------------
-    task_map = {
-        "Content Analyse": "content_analysis",
-        "Content Writing": "content_writing",
-        "Wettbewerbsanalyse": "competitive_analysis",
-        "SEO Audit": "seo_audit",
-        "SEO Optimierung": "seo_optimization",
-        "Technisches SEO (Lighthouse)": "seo_lighthouse",
-        "Kampagnenplanung": "campaign_plan",
-        "Landingpage Strategie": "landingpage_strategy",
-        "Monatsreport": "monthly_report",
-        "Marketingmaßnahmen planen": "tactical_actions",
-        "Alt-Tag Generator": "alt_tag_writer"
-    }
-
-    task_id = task_map.get(task)
-
-
-    clar = {}  # Rückfragen-Parameter initialisieren
-
-    # Kopiere params und entferne "task", damit kein Konflikt mit run_agent(task=...) entsteht
-    params_for_agent = dict(params)
-    params_for_agent.pop("task", None)
-
-    # Robuste Initialisierung aller Felder
-    params_for_agent["zielgruppe"]     = (params.get("zielgruppe") or "").strip()
-    params_for_agent["branche"]        = (params.get("branche") or "").strip()
-    params_for_agent["text"]           = (params.get("text") or "").strip()
-    params_for_agent["context"]        = params_for_agent["text"] 
-    params_for_agent["url"]            = (params.get("url") or "").strip()
-    params_for_agent["thema"]          = (params.get("thema") or "").strip()
-    params_for_agent["keywords"] = ", ".join(params.get("topic_keywords") or [])
-    params_for_agent["topic_keywords"] = params.get("topic_keywords") or []
-    params_for_agent["customer_id"]    = (params.get("customer_id") or "").strip()
-    params_for_agent["ziel"]     = (params.get("ziel") or "").strip()
-    params_for_agent["angebot"]  = (params.get("angebot") or "").strip()
-
-    with st.spinner("🧠 Der Agent denkt nach…"):
+        "zielgruppe": zielgruppe,
+        "thema": thema,
+        "tonalitaet": tonalitaet,
+        "topic_keywords": params.get("topic_keywords", []),
+        "customer_id": customer_id,
+    })
+    try:
         result = run_agent(
             task=task_id,
             reasoning_mode=mode,
             conversation_id=st.session_state.get("conv_id"),
-            clarifications=clar,
-            **params_for_agent  # enthält bereits alle nötigen Parameter
+            clarifications={},
+            **params
         )
-
-
-
-        # Zwischenspeichern der Ergebnisse
         st.session_state.response = result.get("response", "")
         st.session_state.questions = result.get("questions", [])
         st.session_state.conv_id = result.get("conversation_id")
-        st.session_state.themen_bestaetigt = False  # zurücksetzen für zukünftige Runs
-        st.session_state.start_agent = False
+        log_event({"type":"task_run","customer_id": customer_id, "task": task_id})
+        st.success("Task abgeschlossen.")
+    except Exception as e:
+        st.error(f"Fehler beim Agentenlauf: {e}")
 
-    # Logging des Runs
-    log_event({
-        "type": "task_run",
-        "customer_id": params.get("customer_id"),
-        "task": task_id,
-    })
+if st.session_state.get('response'):
+    st.markdown("## ✨ Ergebnis")
+    st.write(st.session_state['response'])
 
-    # Rückfragen initialisieren (falls vorhanden)
-    for i, _ in enumerate(st.session_state.questions):
-        st.session_state.setdefault(f"clar_{i}", "")
-
-# -------------------------------
-# Endgültiges Ergebnis anzeigen + Speichern
-# -------------------------------
-if st.session_state.response:
-    st.subheader("📢 Ergebnis:")
-    st.write(st.session_state.response)
-
-    if st.button("💾 Ergebnis ins Kundengedächtnis speichern"):
-        try:
-            save_customer_memory(customer_id, st.session_state.response)
-            st.success("✅ Ergebnis wurde erfolgreich im Kundengedächtnis gespeichert.")
-        except Exception as e:
-            st.error(f"❌ Fehler beim Speichern: {e}")
-
-# -------------------------------
-# Freier Folgefragen-Dialog (mehrfach möglich)
-# -------------------------------
-if st.session_state.response:
-    st.markdown("### ❓ Weitere Frage an den Agenten")
-    follow_up = st.text_area("Neue Frage eingeben", key="follow_up_text")
-
-    if st.button("Antwort generieren", key="ask_follow_up"):
-        if follow_up.strip():
-            with st.spinner("⏳ Agent denkt über die Rückfrage nach…"):
+    # 💾 Ergebnis ins Kundengedächtnis übernehmen
+    with st.expander("💾 Ergebnis speichern / Memory durchsuchen"):
+        colA, colB = st.columns(2)
+        with colA:
+            if st.button("Ergebnis ins Kundengedächtnis speichern"):
                 try:
-                    params_for_agent = dict(params)
-                    params_for_agent.pop("task", None)
+                    if not customer_id:
+                        st.warning("Bitte oben einen Kunden auswählen.")
+                    else:
+                        save_customer_memory(customer_id, st.session_state['response'])
+                        st.success("Gespeichert.")
+                except Exception as e:
+                    st.error(f"Fehler beim Speichern: {e}")
+        with colB:
+            q = st.text_input("🔎 Im Gedächtnis suchen")
+            if st.button("Suchen") and q:
+                try:
+                    res = run_agent(task="memory_search", reasoning_mode="deep", query=q)
+                    st.write(res.get("response","–"))
+                except Exception as e:
+                    st.error(f"Fehler bei der Suche: {e}")
 
+    if st.session_state.get('questions'):
+        st.markdown("### ❓ Rückfragen")
+        for i, q in enumerate(st.session_state['questions']):
+            ans = st.text_input(f"Frage {i+1}: {q}", key=f"clar_{i}")
+            if st.button("Antwort senden", key=f"clar_btn_{i}"):
+                params = dict(bundle.get("fields", {}))
+                params.update({
+                    "text": bundle.get("merged_context", ""),
+                    "url": url,
+                    "zielgruppe": zielgruppe,
+                    "thema": thema,
+                    "tonalitaet": tonalitaet,
+                    "topic_keywords": params.get("topic_keywords", []),
+                    "customer_id": customer_id,
+                })
+                try:
                     result = run_agent(
-                        task=task_id,
+                        task=selected_task,
                         reasoning_mode=mode,
                         conversation_id=st.session_state.get("conv_id"),
-                        follow_up=follow_up,
+                        follow_up=ans,
                         is_follow_up=True,
-                        **params_for_agent
+                        **params
                     )
+                    st.session_state['response'] += f"
 
-                    st.session_state.response += f"\n\n---\n\n➡️ **Frage:** {follow_up}\n\n🧠 **Antwort:**\n{result['response']}"
-                    st.session_state.conv_id = result.get("conversation_id")
+---
 
+➡️ **Frage:** {ans}
+
+🧠 **Antwort:**
+{result['response']}"
                 except Exception as e:
-                    st.error(f"Fehler bei der Folgefrage: {e}")
+                    st.error(f"Fehler bei Folgefrage: {e}")
 
-
-
+st.markdown("---")
+st.subheader("📝 Feedback")
+colA, colB = st.columns(2)
+with colA:
+    rating = st.slider("Wie hilfreich war das Ergebnis?", 1, 5, 4)
+with colB:
+    comment = st.text_input("Kommentar (optional)")
+if st.button("Feedback senden"):
+    log_event({"type":"rating","customer_id": customer_id, "rating": rating, "comment": comment})
+    st.success("Danke!")
