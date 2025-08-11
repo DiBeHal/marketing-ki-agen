@@ -380,7 +380,12 @@ if st.session_state.get('response'):
                         is_follow_up=True,
                         **params
                     )
-                    st.session_state['response'] += f"
+                    st.session_state['response'] += (
+                        "\n\n---\n\n➡️ **Frage:** {q}\n\n🧠 **Antwort:**\n{resp}".format(
+                            q=ans,
+                            resp=result.get("response", "")
+                        )
+                    )
 
 ---
 
