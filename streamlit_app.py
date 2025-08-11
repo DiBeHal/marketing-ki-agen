@@ -381,7 +381,7 @@ if st.session_state.get('response'):
                         **params
                     )
                     st.session_state['response'] += (
-                        "\n\n---\n\n➡️ **Frage:** {q}\n\n🧠 **Antwort:**\n{resp}".format(
+                        "\n\n---\n\n-> Frage: {q}\n\nAntwort:\n{resp}".format(
                             q=ans,
                             resp=result.get("response", "")
                         )
