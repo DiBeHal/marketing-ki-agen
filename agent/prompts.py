@@ -739,33 +739,32 @@ context_merger_planner_prompt = """
 
 ### PRESENTATION
 Bitte antworte im folgenden JSON-Format (keine Kommentare außerhalb der Struktur):
-{
-  "task": str,
-  "intent_summary": str,
-  "response_type": str,
-  "field_suggestions": {
-    "zielgruppe": str,
-    "thema": str,
-    "tonalitaet": str,
-    "keyword_fokus": str,
-    "plattform": str,
-    "produktname": str,
-    "gliederungspunkte": str,
-    "formatwunsch": str
-  },
+{{
+  "task": "str",
+  "intent_summary": "str",
+  "response_type": "str",
+  "field_suggestions": {{
+    "zielgruppe": "str",
+    "thema": "str",
+    "tonalitaet": "str",
+    "keyword_fokus": "str",
+    "plattform": "str",
+    "produktname": "str",
+    "gliederungspunkte": "str",
+    "formatwunsch": "str"
+  }},
   "recommended_sources": [
-    {"type": str, "keywords": list, "priority": str, "reason": str}
+    {{"type": "str", "keywords": [], "priority": "str", "reason": "str"}}
   ],
-  "questions": [str],
+  "questions": ["str"],
   "issues": [
-    {"source": str, "error": str, "fallback_used": bool}
+    {{"source": "str", "error": "str", "fallback_used": false}}
   ],
-  "explanation": str,
+  "explanation": "str",
   "status": "awaiting_confirmation"
-}
+}}
 """
 
-# Prompt für ContextMerger Phase 2 – finale Konsolidierung und Felder ausfüllen
 context_merger_executor_prompt = """
 ### GOAL
 - Set the scene: Du bist ein Meta-Agent, der basierend auf bestätigten Quellen nun alle Informationen konsolidiert
@@ -788,18 +787,18 @@ context_merger_executor_prompt = """
 5. Wenn ein Feld nicht benötigt wird, weglassen oder mit "-" markieren
 
 ### OUTPUT
-{
-  "final_context_summary": str,
-  "field_suggestions": {
-    "zielgruppe": str,
-    "thema": str,
-    "tonalitaet": str,
-    "keyword_fokus": str,
-    "plattform": str,
-    "produktname": str,
-    "gliederungspunkte": str,
-    "formatwunsch": str
-  },
+{{
+  "final_context_summary": "str",
+  "field_suggestions": {{
+    "zielgruppe": "str",
+    "thema": "str",
+    "tonalitaet": "str",
+    "keyword_fokus": "str",
+    "plattform": "str",
+    "produktname": "str",
+    "gliederungspunkte": "str",
+    "formatwunsch": "str"
+  }},
   "status": "finalized"
-}
+}}
 """
