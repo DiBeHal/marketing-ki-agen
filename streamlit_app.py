@@ -380,29 +380,23 @@ if st.session_state.get('response'):
                         is_follow_up=True,
                         **params
                     )
-                    st.session_state['response'] += (
+                    st.session_state["response"] += (
                         "\n\n---\n\n-> Frage: {q}\n\nAntwort:\n{resp}".format(
                             q=ans,
                             resp=result.get("response", "")
                         )
                     )
-
----
-
-➡️ **Frage:** {ans}
-
-🧠 **Antwort:**
-{result['response']}"
                 except Exception as e:
                     st.error(f"Fehler bei Folgefrage: {e}")
 
-st.markdown("---")
-st.subheader("📝 Feedback")
-colA, colB = st.columns(2)
-with colA:
-    rating = st.slider("Wie hilfreich war das Ergebnis?", 1, 5, 4)
-with colB:
-    comment = st.text_input("Kommentar (optional)")
-if st.button("Feedback senden"):
-    log_event({"type":"rating","customer_id": customer_id, "rating": rating, "comment": comment})
-    st.success("Danke!")
+
+        st.markdown("---")
+        st.subheader("📝 Feedback")
+        colA, colB = st.columns(2)
+        with colA:
+            rating = st.slider("Wie hilfreich war das Ergebnis?", 1, 5, 4)
+        with colB:
+            comment = st.text_input("Kommentar (optional)")
+        if st.button("Feedback senden"):
+            log_event({"type":"rating","customer_id": customer_id, "rating": rating, "comment": comment})
+            st.success("Danke!")
